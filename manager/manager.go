@@ -123,4 +123,6 @@ func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 		panic("Router couldn't get ready.")
 	}
 	<-manager.readyChannel
+
+	router.writeAsString(1)
 }

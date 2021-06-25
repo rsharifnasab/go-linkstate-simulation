@@ -8,4 +8,6 @@ func main() {
 	router.connectToManager("localhost:8585")
 	router.writeToManager(router.port)
 	router.readConnectivityTable()
+	router.sendReadySignal()
+	router.waitForOurRouters()
 }

@@ -122,3 +122,16 @@ func (router *Router) readConnectivityTable() {
 		log.Printf("%+v\n", edge)
 	}
 }
+
+func (router *Router) sendReadySignal() {
+	// for debug
+	//time.Sleep(5 * time.Second)
+
+	router.writeToManager("READY")
+	log.Printf("I am ready")
+}
+
+func (router *Router) waitForOurRouters() {
+	router.readIntFromManager()
+	log.Printf("we are all synced")
+}

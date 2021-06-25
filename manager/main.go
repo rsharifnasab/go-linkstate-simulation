@@ -30,8 +30,10 @@ func main() {
 		manager.readyWG.Add(1)
 		go manager.handleRouter(i, conn)
 	}
+	log.Printf("waiting for routers to get ready")
 	manager.readyWG.Wait()
 	close(manager.readyChannel)
+	log.Printf("all routers got ready")
 
 	time.Sleep(3 * time.Second)
 	for _, conn := range conns {
