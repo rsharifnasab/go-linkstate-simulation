@@ -14,7 +14,6 @@ func main() {
 	manager := newManagerWithConfig("config")
 	listener, err := net.Listen("tcp", ":8585")
 	pnc(err)
-	conns := make([]*net.Conn, 0)
 	for i := 0; i < manager.routersCount; i++ {
 		routerCmd := exec.Command("../router/router")
 		reader, err := routerCmd.StderrPipe()
@@ -23,21 +22,24 @@ func main() {
 		routerCmd.Start()
 
 		log.Printf("Created router #%v\n", i)
-
 		conn, err := listener.Accept()
 		pnc(err)
-		conns = append(conns, &conn)
+		manager.routers[i].setConnection(conn)
 		manager.readyWG.Add(1)
 		go manager.handleRouter(i, conn)
 	}
 	log.Printf("waiting for routers to get ready")
 	manager.readyWG.Wait()
 	close(manager.readyChannel)
+
+	manager.networkReadyWG.Add(manager.routersCount)
+	manager.networkReadyWG.Wait()
+	close(manager.networkReadyChannel)
 	log.Printf("all routers got ready")
 
 	time.Sleep(3 * time.Second)
-	for _, conn := range conns {
-		(*conn).Close()
+	for _, router := range manager.routers {
+		router.conn.Close()
 	}
 }
 

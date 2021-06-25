@@ -13,7 +13,8 @@ import (
 
 type Router struct {
 	conn    *net.UDPConn
-	port    int
+	Port    int
+	Index   int
 	logFile *os.File
 
 	routersCount      int
@@ -24,12 +25,12 @@ type Router struct {
 }
 
 type Edge struct {
-	Dest int
+	Dest *Router
 	Cost int
 }
 
 func (router *Router) InitLogger() {
-	logFileAdd := fmt.Sprintf("../%v.log", router.port)
+	logFileAdd := fmt.Sprintf("../%v.log", router.Port)
 	logFile, err := os.OpenFile(logFileAdd, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	pnc(err)
 
@@ -39,7 +40,7 @@ func (router *Router) InitLogger() {
 	log.SetFlags(0)
 	log.Printf("")
 	//log.Printf("- - - %v logger - - -", port)
-	log.SetPrefix(fmt.Sprintf("child %v ", router.port))
+	log.SetPrefix(fmt.Sprintf("child %v ", router.Port))
 
 }
 
@@ -55,7 +56,7 @@ func (router *Router) StartUDPServer() {
 		conn, err := net.ListenUDP("udp", &addr)
 		if err == nil {
 			router.conn = conn
-			router.port = port
+			router.Port = port
 			return
 		}
 	}
@@ -115,6 +116,10 @@ func (router *Router) readIntFromManager() int {
 	return num
 }
 
+func (router *Router) getIndexFromManager() {
+	router.Index = router.readIntFromManager()
+}
+
 func (router *Router) readConnectivityTable() {
 	router.routersCount = router.readIntFromManager()
 	log.Printf("received %v. waiting for connectivity table", router.routersCount)
@@ -134,10 +139,16 @@ func (router *Router) sendReadySignal() {
 	log.Printf("I am ready")
 }
 
-func (router *Router) waitForOtherRouters() {
+func (router *Router) waitForNetworkSafety() {
 	message := router.readStringFromManager()
 	if message != "safe" {
 		panic("we are not safe")
 	}
 	log.Printf("we are all synced")
+}
+
+func (router *Router) testNeighbouringLinks() {
+	// for _, edge := range router.neighbours {
+
+	// }
 }

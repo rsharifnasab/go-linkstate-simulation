@@ -14,14 +14,17 @@ import (
 )
 
 type Manager struct {
-	routersCount int
-	netConns     [][]Edge
-	readyWG      sync.WaitGroup
-	readyChannel chan struct{}
+	routersCount        int
+	routers             []*Router
+	netConns            [][]Edge
+	readyWG             sync.WaitGroup
+	networkReadyWG      sync.WaitGroup
+	readyChannel        chan struct{}
+	networkReadyChannel chan struct{}
 }
 
 type Edge struct {
-	Dest int
+	Dest *Router
 	Cost int
 }
 
@@ -42,43 +45,43 @@ func newManagerWithConfig(configFile string) *Manager {
 	config := loadConfig(configFile)
 	routersCount := config.GetInt("number_of_routers")
 	manager := &Manager{
-		routersCount: routersCount,
-		netConns:     make([][]Edge, routersCount),
-		readyWG:      sync.WaitGroup{},
-		readyChannel: make(chan struct{}),
+		routersCount:   routersCount,
+		netConns:       make([][]Edge, routersCount),
+		readyWG:        sync.WaitGroup{},
+		networkReadyWG: sync.WaitGroup{},
+		readyChannel:   make(chan struct{}),
+		routers:        make([]*Router, routersCount),
 	}
 	for i := 0; i < manager.routersCount; i++ {
 		manager.netConns[i] = make([]Edge, 0)
+		manager.routers[i] = &Router{Index: i}
 	}
 
-	var edges []ConfigEdge
-	pnc(config.UnmarshalKey("links", &edges))
+	var configEdges []ConfigEdge
+	pnc(config.UnmarshalKey("links", &configEdges))
 
-	for _, edge := range edges {
-		manager.netConns[edge.Node1] =
-			append(manager.netConns[edge.Node1], Edge{Dest: edge.Node2, Cost: edge.Cost})
-		manager.netConns[edge.Node2] =
-			append(manager.netConns[edge.Node2], Edge{Dest: edge.Node1, Cost: edge.Cost})
+	for _, configEdge := range configEdges {
+		manager.netConns[configEdge.Node1] =
+			append(manager.netConns[configEdge.Node1], Edge{Dest: manager.routers[configEdge.Node2], Cost: configEdge.Cost})
+		manager.netConns[configEdge.Node2] =
+			append(manager.netConns[configEdge.Node2], Edge{Dest: manager.routers[configEdge.Node1], Cost: configEdge.Cost})
 	}
 	return manager
 }
 
 type Router struct {
+	conn   net.Conn
 	reader *bufio.Reader
 	writer *bufio.Writer
-	index  int
-	port   int
+	Index  int
+	Port   int
 }
 
-func newRouterConnection(routerIndex int, conn net.Conn) *Router {
-	reader := bufio.NewReader(conn)
-	writer := bufio.NewWriter(conn)
-	router := &Router{
-		reader: reader,
-		writer: writer,
-		index:  routerIndex,
-	}
-	return router
+// change name to set connection
+func (router *Router) setConnection(conn net.Conn) {
+	router.conn = conn
+	router.reader = bufio.NewReader(conn)
+	router.writer = bufio.NewWriter(conn)
 }
 
 func (router *Router) readString() string {
@@ -101,21 +104,22 @@ func (router *Router) writeAsString(obj interface{}) {
 func (router *Router) writeAsBytes(obj interface{}) {
 	marshalled, err := json.Marshal(obj)
 	pnc(err)
-	_, err = router.writer.Write(marshalled)
-	pnc(err)
-	_, err = router.writer.Write([]byte("\n"))
+	buf := make([]byte, 0)
+	buf = append(buf, marshalled...)
+	buf = append(buf, '\n')
+	_, err = router.writer.Write(buf)
 	pnc(err)
 	router.writer.Flush()
 }
 
 func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
-	router := newRouterConnection(routerIndex, conn)
-	router.port = router.readInt()
-	log.Printf("router #%v connected, udp port: %v\n", router.index, router.port)
-
+	router := manager.routers[routerIndex]
+	router.Port = router.readInt()
+	log.Printf("router #%v connected, udp port: %v\n", router.Index, router.Port)
+	router.writeAsString(router.Index)
 	// send connectivity table
 	router.writeAsString(manager.routersCount)
-	router.writeAsBytes(manager.netConns[router.index])
+	router.writeAsBytes(manager.netConns[router.Index])
 	readiness := router.readString()
 	if readiness == "READY" {
 		manager.readyWG.Done()
@@ -123,6 +127,13 @@ func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 		panic("Router couldn't get ready.")
 	}
 	<-manager.readyChannel
-
 	router.writeAsString("safe")
+	readiness = router.readString()
+	if readiness == "ACKS_RECEIVED" {
+		manager.networkReadyWG.Done()
+	} else {
+		panic("Router couldn't get ready.")
+	}
+	<-manager.networkReadyChannel
+	router.writeAsString("NETWORK_READY")
 }
