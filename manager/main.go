@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -10,7 +9,7 @@ import (
 )
 
 func main() {
-	log.Println("Server is running")
+	initLogger()
 	manager := createManagerFromConfig("config")
 	listener, err := net.Listen("tcp", ":8585")
 	pnc(err)
@@ -29,14 +28,17 @@ func main() {
 	}
 }
 
+func initLogger() {
+	log.SetFlags(0)
+	log.Println("Server is running")
+}
 func handleChildError(reader io.ReadCloser, i int) {
 	sc := bufio.NewScanner(reader)
 	for {
 		if !sc.Scan() {
 			return
 		}
-		str := fmt.Sprintf("child %d said: %s\n", i, sc.Text())
-		print(str)
+		log.Printf("child %d : %s\n", i, sc.Text())
 	}
 }
 
