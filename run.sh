@@ -3,6 +3,8 @@
 set -o errexit
 set -o nounset
 
+find . -type f -name "*.log" -delete
+
 clear 
 (
     cd router
