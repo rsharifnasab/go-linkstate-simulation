@@ -8,13 +8,16 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/spf13/viper"
 )
 
 type Manager struct {
-	RoutersCount int
-	NetConns     [][]Edge
+	routersCount int
+	netConns     [][]Edge
+	readyWG      sync.WaitGroup
+	readyChannel chan struct{}
 }
 
 type Edge struct {
@@ -35,26 +38,27 @@ func loadConfig(configFile string) *viper.Viper {
 	pnc(config.ReadInConfig())
 	return config
 }
-func createManagerFromConfig(configFile string) *Manager {
-
+func newManagerWithConfig(configFile string) *Manager {
 	config := loadConfig(configFile)
 	routersCount := config.GetInt("number_of_routers")
 	manager := &Manager{
-		RoutersCount: routersCount,
-		NetConns:     make([][]Edge, routersCount),
+		routersCount: routersCount,
+		netConns:     make([][]Edge, routersCount),
+		readyWG:      sync.WaitGroup{},
+		readyChannel: make(chan struct{}),
 	}
-	for i := 0; i < manager.RoutersCount; i++ {
-		manager.NetConns[i] = make([]Edge, 0)
+	for i := 0; i < manager.routersCount; i++ {
+		manager.netConns[i] = make([]Edge, 0)
 	}
 
 	var edges []ConfigEdge
 	pnc(config.UnmarshalKey("links", &edges))
 
 	for _, edge := range edges {
-		manager.NetConns[edge.Node1] =
-			append(manager.NetConns[edge.Node1], Edge{Dest: edge.Node2, Cost: edge.Cost})
-		manager.NetConns[edge.Node2] =
-			append(manager.NetConns[edge.Node2], Edge{Dest: edge.Node1, Cost: edge.Cost})
+		manager.netConns[edge.Node1] =
+			append(manager.netConns[edge.Node1], Edge{Dest: edge.Node2, Cost: edge.Cost})
+		manager.netConns[edge.Node2] =
+			append(manager.netConns[edge.Node2], Edge{Dest: edge.Node1, Cost: edge.Cost})
 	}
 	return manager
 }
@@ -110,6 +114,13 @@ func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 	log.Printf("router #%v connected, udp port: %v\n", router.index, router.port)
 
 	// send connectivity table
-	router.writeAsString(manager.RoutersCount)
-	router.writeAsBytes(manager.NetConns[router.index])
+	router.writeAsString(manager.routersCount)
+	router.writeAsBytes(manager.netConns[router.index])
+	readiness := router.readString()
+	if readiness == "READY" {
+		manager.readyWG.Done()
+	} else {
+		panic("Router couldn't get ready.")
+	}
+	<-manager.readyChannel
 }

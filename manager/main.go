@@ -11,11 +11,11 @@ import (
 
 func main() {
 	initLogger()
-	manager := createManagerFromConfig("config")
+	manager := newManagerWithConfig("config")
 	listener, err := net.Listen("tcp", ":8585")
 	pnc(err)
 	conns := make([]*net.Conn, 0)
-	for i := 0; i < manager.RoutersCount; i++ {
+	for i := 0; i < manager.routersCount; i++ {
 		routerCmd := exec.Command("../router/router")
 		reader, err := routerCmd.StderrPipe()
 		pnc(err)
@@ -27,8 +27,12 @@ func main() {
 		conn, err := listener.Accept()
 		pnc(err)
 		conns = append(conns, &conn)
+		manager.readyWG.Add(1)
 		go manager.handleRouter(i, conn)
 	}
+	manager.readyWG.Wait()
+	close(manager.readyChannel)
+
 	time.Sleep(3 * time.Second)
 	for _, conn := range conns {
 		(*conn).Close()
