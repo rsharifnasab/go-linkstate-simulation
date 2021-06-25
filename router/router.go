@@ -8,13 +8,13 @@ import (
 	"os"
 )
 
-var port int
 var ManagerConn *net.UDPConn
 var managerWriter *bufio.Writer
 var managerReader *bufio.Reader
 
 func main() {
-	udpConn, err := startUDPServer()
+	udpConn, err, port := startUDPServer()
+	pnc(err)
 	logFile := initloger(udpConn.LocalAddr())
 	defer logFile.Close()
 
@@ -35,26 +35,27 @@ func initloger(myAdd net.Addr) *os.File {
 
 	log.SetOutput(logFile)
 	log.SetFlags(0)
-	log.Printf("- - logger init - -")
+	log.Printf("- - %v logger - -", port)
 	log.SetPrefix(fmt.Sprintf("child %v ", port))
 
 	return logFile
 }
 
 func managerWrite(data interface{}) {
+	//fmt.Fprintf(os.Stderr, "--%v\n", data)
 	managerWriter.WriteString(fmt.Sprintf("%v\n", data))
-	defer pnc(managerWriter.Flush())
+	pnc(managerWriter.Flush())
 }
 
 func getSomeFreePort() int {
 	listener, err := net.Listen("tcp", ":0")
 	pnc(err)
-	fmt.Fprintf(os.Stderr, "using port: %+v\n", listener.Addr().(*net.TCPAddr))
+	//fmt.Fprintf(os.Stderr, "using port: %+v\n", listener.Addr().(*net.TCPAddr))
 	pnc(listener.Close())
 	return listener.Addr().(*net.TCPAddr).Port
 }
 
-func startUDPServer() (*net.UDPConn, error) {
+func startUDPServer() (*net.UDPConn, error, int) {
 	var err error
 	for failures := 0; failures < 3; failures++ {
 		port := getSomeFreePort()
@@ -64,10 +65,10 @@ func startUDPServer() (*net.UDPConn, error) {
 		}
 		conn, err := net.ListenUDP("udp", &addr)
 		if err == nil {
-			return conn, nil
+			return conn, nil, port
 		}
 	}
-	return nil, err
+	return nil, err, -1
 }
 
 // unused by now

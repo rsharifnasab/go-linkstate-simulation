@@ -17,3 +17,5 @@ clear
     go build 
     ./manager
 )
+
+cat ./*.log

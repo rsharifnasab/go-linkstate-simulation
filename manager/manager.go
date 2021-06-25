@@ -59,13 +59,14 @@ func createManagerFromConfig(configFile string) *Manager {
 
 func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 	defer conn.Close()
-	log.Printf("Handling connection for router #%v\n", routerIndex)
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
 	portStr, err := reader.ReadString('\n')
 	pnc(err)
-	port, _ := strconv.Atoi(strings.TrimSpace(portStr))
-	log.Printf("client sent port: %v\n", port)
+	port, err := strconv.Atoi(strings.TrimSpace(portStr))
+	pnc(err)
+	//log.Printf("client sent port: %v\n", port)
 
+	log.Printf("router #%v connected, udp port: %v\n", routerIndex, port)
 	_ = writer
 }

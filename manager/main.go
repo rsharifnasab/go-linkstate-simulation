@@ -20,7 +20,7 @@ func main() {
 		go handleChildError(reader, i)
 		routerCmd.Start()
 
-		log.Printf("Started router #%v\n", i)
+		log.Printf("Created router #%v\n", i)
 
 		conn, err := listener.Accept()
 		pnc(err)
