@@ -1,2 +1,3 @@
 manager/manager
 router/router
+*.log
