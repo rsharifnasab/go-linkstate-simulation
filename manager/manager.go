@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"strconv"
@@ -16,8 +18,8 @@ type Manager struct {
 }
 
 type Edge struct {
-	dest int
-	cost int
+	Dest int
+	Cost int
 }
 
 type ConfigEdge struct {
@@ -50,25 +52,64 @@ func createManagerFromConfig(configFile string) *Manager {
 
 	for _, edge := range edges {
 		manager.NetConns[edge.Node1] =
-			append(manager.NetConns[edge.Node1], Edge{dest: edge.Node2, cost: edge.Cost})
+			append(manager.NetConns[edge.Node1], Edge{Dest: edge.Node2, Cost: edge.Cost})
 		manager.NetConns[edge.Node2] =
-			append(manager.NetConns[edge.Node2], Edge{dest: edge.Node1, cost: edge.Cost})
+			append(manager.NetConns[edge.Node2], Edge{Dest: edge.Node1, Cost: edge.Cost})
 	}
 	return manager
 }
 
-func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
-	defer conn.Close()
+type Router struct {
+	reader *bufio.Reader
+	writer *bufio.Writer
+	index  int
+	port   int
+}
+
+func newRouterConnection(routerIndex int, conn net.Conn) *Router {
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
-	portStr, err := reader.ReadString('\n')
-	pnc(err)
-	port, err := strconv.Atoi(strings.TrimSpace(portStr))
-	pnc(err)
+	router := &Router{
+		reader: reader,
+		writer: writer,
+		index:  routerIndex,
+	}
+	return router
+}
 
-	log.Printf("router #%v connected, udp port: %v\n", routerIndex, port)
+func (router *Router) readString() string {
+	str, err := router.reader.ReadString('\n')
+	pnc(err)
+	return strings.TrimSpace(str)
+}
+
+func (router *Router) readInt() int {
+	num, err := strconv.Atoi(router.readString())
+	pnc(err)
+	return num
+}
+
+func (router *Router) writeAsString(obj interface{}) {
+	router.writer.WriteString(fmt.Sprintf("%v\n", obj))
+	router.writer.Flush()
+}
+
+func (router *Router) writeAsBytes(obj interface{}) {
+	marshalled, err := json.Marshal(obj)
+	pnc(err)
+	_, err = router.writer.Write(marshalled)
+	pnc(err)
+	_, err = router.writer.Write([]byte("\n"))
+	pnc(err)
+	router.writer.Flush()
+}
+
+func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
+	router := newRouterConnection(routerIndex, conn)
+	router.port = router.readInt()
+	log.Printf("router #%v connected, udp port: %v\n", router.index, router.port)
 
 	// send connectivity table
-	_, err = writer.Write([]byte("salam"))
-	pnc(err)
+	router.writeAsString(manager.RoutersCount)
+	router.writeAsBytes(manager.NetConns[router.index])
 }

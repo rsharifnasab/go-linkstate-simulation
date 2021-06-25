@@ -14,6 +14,7 @@ func main() {
 	manager := createManagerFromConfig("config")
 	listener, err := net.Listen("tcp", ":8585")
 	pnc(err)
+	conns := make([]*net.Conn, 0)
 	for i := 0; i < manager.RoutersCount; i++ {
 		routerCmd := exec.Command("../router/router")
 		reader, err := routerCmd.StderrPipe()
@@ -25,9 +26,13 @@ func main() {
 
 		conn, err := listener.Accept()
 		pnc(err)
+		conns = append(conns, &conn)
 		go manager.handleRouter(i, conn)
 	}
-	time.Sleep(1 * time.Second)
+	time.Sleep(3 * time.Second)
+	for _, conn := range conns {
+		(*conn).Close()
+	}
 }
 
 func initLogger() {
