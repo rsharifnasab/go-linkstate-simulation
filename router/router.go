@@ -8,28 +8,26 @@ import (
 	"os"
 )
 
-var ManagerConn *net.UDPConn
-var managerWriter *bufio.Writer
-var managerReader *bufio.Reader
+type x struct {
+	routerCount int
+}
 
 func main() {
 	udpConn, err, port := startUDPServer()
 	pnc(err)
+	_ = udpConn
+
 	logFile := initloger(port)
 	defer logFile.Close()
 
-	managerConnection, err := net.Dial("tcp", "localhost:8585")
-	pnc(err)
-	defer managerConnection.Close()
+	manager := NewManager("localhost:8585")
+	defer manager.conn.Close()
 
-	managerReader = bufio.NewReader(managerConnection)
-	managerWriter = bufio.NewWriter(managerConnection)
-	managerWrite(port)
+	manager.write(port)
 
 	// todo
 	readConnTable()
 
-	_ = udpConn
 }
 
 func readConnTable() {
@@ -48,11 +46,6 @@ func initloger(port int) *os.File {
 	log.SetPrefix(fmt.Sprintf("child %v ", port))
 
 	return logFile
-}
-
-func managerWrite(data interface{}) {
-	managerWriter.WriteString(fmt.Sprintf("%v\n", data))
-	pnc(managerWriter.Flush())
 }
 
 func getSomeFreePort() int {
