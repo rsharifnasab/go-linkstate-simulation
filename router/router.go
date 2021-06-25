@@ -26,7 +26,14 @@ func main() {
 	managerWriter = bufio.NewWriter(managerConnection)
 	managerWrite(port)
 
+	// todo
+	readConnTable()
+
 	_ = udpConn
+}
+
+func readConnTable() {
+	log.Printf("read conn table")
 }
 
 func initloger(port int) *os.File {
@@ -36,7 +43,8 @@ func initloger(port int) *os.File {
 
 	log.SetOutput(logFile)
 	log.SetFlags(0)
-	log.Printf("- - %v logger - -", port)
+	log.Printf("")
+	//log.Printf("- - - %v logger - - -", port)
 	log.SetPrefix(fmt.Sprintf("child %v ", port))
 
 	return logFile

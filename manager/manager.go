@@ -65,8 +65,10 @@ func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 	pnc(err)
 	port, err := strconv.Atoi(strings.TrimSpace(portStr))
 	pnc(err)
-	//log.Printf("client sent port: %v\n", port)
 
 	log.Printf("router #%v connected, udp port: %v\n", routerIndex, port)
-	_ = writer
+
+	// send connectivity table
+	_, err = writer.Write([]byte("salam"))
+	pnc(err)
 }
