@@ -3,6 +3,7 @@
 set -o errexit
 set -o nounset
 
+clear 
 (
     cd router
     go build

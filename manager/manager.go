@@ -11,36 +11,13 @@ import (
 )
 
 type Manager struct {
-	numberOfRouters    int
-	networkConnections [][]Edge
+	RoutersCount int
+	NetConns     [][]Edge
 }
 
 type Edge struct {
 	dest int
 	cost int
-}
-
-func (manager *Manager) loadConfig() {
-	config := viper.New()
-	config.SetConfigName("config")
-	config.AddConfigPath(".")
-	err := config.ReadInConfig()
-	if err != nil {
-		panic(err)
-	}
-	manager.numberOfRouters = config.GetInt("number_of_routers")
-	manager.networkConnections = make([][]Edge, manager.numberOfRouters)
-	for i := 0; i < manager.numberOfRouters; i++ {
-		manager.networkConnections[i] = make([]Edge, 0)
-	}
-	var edges []ConfigEdge
-	_ = config.UnmarshalKey("links", &edges)
-	for _, edge := range edges {
-		manager.networkConnections[edge.Node1] =
-			append(manager.networkConnections[edge.Node1], Edge{dest: edge.Node2, cost: edge.Cost})
-		manager.networkConnections[edge.Node2] =
-			append(manager.networkConnections[edge.Node2], Edge{dest: edge.Node1, cost: edge.Cost})
-	}
 }
 
 type ConfigEdge struct {
@@ -49,13 +26,46 @@ type ConfigEdge struct {
 	Cost  int `mapstructure:"cost"`
 }
 
+func loadConfig(configFile string) *viper.Viper {
+	config := viper.New()
+	config.SetConfigName(configFile)
+	config.AddConfigPath(".")
+	pnc(config.ReadInConfig())
+	return config
+}
+func createManagerFromConfig(configFile string) *Manager {
+
+	config := loadConfig(configFile)
+	routersCount := config.GetInt("number_of_routers")
+	manager := &Manager{
+		RoutersCount: routersCount,
+		NetConns:     make([][]Edge, routersCount),
+	}
+	for i := 0; i < manager.RoutersCount; i++ {
+		manager.NetConns[i] = make([]Edge, 0)
+	}
+
+	var edges []ConfigEdge
+	pnc(config.UnmarshalKey("links", &edges))
+
+	for _, edge := range edges {
+		manager.NetConns[edge.Node1] =
+			append(manager.NetConns[edge.Node1], Edge{dest: edge.Node2, cost: edge.Cost})
+		manager.NetConns[edge.Node2] =
+			append(manager.NetConns[edge.Node2], Edge{dest: edge.Node1, cost: edge.Cost})
+	}
+	return manager
+}
+
 func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 	defer conn.Close()
 	log.Printf("Handling connection for router #%v\n", routerIndex)
 	reader := bufio.NewReader(conn)
-	// writer := bufio.NewWriter(conn)
+	writer := bufio.NewWriter(conn)
 	portStr, err := reader.ReadString('\n')
 	pnc(err)
 	port, _ := strconv.Atoi(strings.TrimSpace(portStr))
 	log.Printf("client sent port: %v\n", port)
+
+	_ = writer
 }

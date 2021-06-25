@@ -3,43 +3,63 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"net"
+	"os"
 )
 
 var port int
-var conn *net.UDPConn
-var writer *bufio.Writer
+var ManagerConn *net.UDPConn
+var managerWriter *bufio.Writer
+var managerReader *bufio.Reader
 
 func main() {
-	startUDPServer()
+	udpConn, err := startUDPServer()
+	logFile := initloger(getPathFromAddr(udpConn.LocalAddr()))
+	defer logFile.Close()
+
 	managerConnection, err := net.Dial("tcp", "localhost:8585")
 	pnc(err)
 	defer managerConnection.Close()
-	// reader := bufio.NewReader(managerConnection)
-	writer = bufio.NewWriter(managerConnection)
-	writeInt(port)
-	// for {
-	// handleUDPRequest()
-	// }
+
+	managerReader = bufio.NewReader(managerConnection)
+	managerWriter = bufio.NewWriter(managerConnection)
+	managerWrite(port)
 }
 
-func writeInt(num int) {
-	writer.WriteString(fmt.Sprintf("%v\n", num))
-	defer pnc(writer.Flush())
+func getPathFromAddr(addr net.Addr) string {
+	return fmt.Sprintf("../%v.log", addr.(*net.UDPAddr).Port)
 }
 
-func getSomeFreePort() {
+func initloger(logFileAdd string) *os.File {
+	logFile, err := os.OpenFile(logFileAdd, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	pnc(err)
+
+	log.SetOutput(logFile)
+	log.Printf("logger opened on file %v", logFileAdd)
+	log.SetPrefix("child : ")
+	println("log file add : ", logFileAdd)
+
+	return logFile
+}
+
+func managerWrite(data interface{}) {
+	managerWriter.WriteString(fmt.Sprintf("%v\n", data))
+	defer pnc(managerWriter.Flush())
+}
+
+func getSomeFreePort() int {
 	listener, err := net.Listen("tcp", ":0")
 	pnc(err)
-	fmt.Printf("Using port: %+v\n", listener.Addr().(*net.TCPAddr))
-	port = listener.Addr().(*net.TCPAddr).Port
+	fmt.Fprintf(os.Stderr, "using port: %+v\n", listener.Addr().(*net.TCPAddr))
 	pnc(listener.Close())
+	return listener.Addr().(*net.TCPAddr).Port
 }
 
 func startUDPServer() (*net.UDPConn, error) {
 	var err error
 	for failures := 0; failures < 3; failures++ {
-		getSomeFreePort()
+		port := getSomeFreePort()
 		addr := net.UDPAddr{
 			Port: port,
 			IP:   net.ParseIP("127.0.0.1"),
@@ -52,6 +72,7 @@ func startUDPServer() (*net.UDPConn, error) {
 	return nil, err
 }
 
+// unused by now
 func udpClient() {
 	p := make([]byte, 2048)
 	conn, err := net.Dial("udp", "127.0.0.1:1234")
