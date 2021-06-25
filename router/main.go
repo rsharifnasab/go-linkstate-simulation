@@ -9,5 +9,5 @@ func main() {
 	router.writeToManager(router.port)
 	router.readConnectivityTable()
 	router.sendReadySignal()
-	router.waitForOurRouters()
+	router.waitForOtherRouters()
 }

@@ -104,10 +104,13 @@ func (router *Router) freeResources() {
 	}
 }
 
-func (router *Router) readIntFromManager() int {
+func (router *Router) readStringFromManager() string {
 	str, err := router.managerReader.ReadString('\n')
 	pnc(err)
-	num, err := strconv.Atoi(strings.TrimSpace(str))
+	return strings.TrimSpace(str)
+}
+func (router *Router) readIntFromManager() int {
+	num, err := strconv.Atoi(router.readStringFromManager())
 	pnc(err)
 	return num
 }
@@ -131,7 +134,10 @@ func (router *Router) sendReadySignal() {
 	log.Printf("I am ready")
 }
 
-func (router *Router) waitForOurRouters() {
-	router.readIntFromManager()
+func (router *Router) waitForOtherRouters() {
+	message := router.readStringFromManager()
+	if message != "safe" {
+		panic("we are not safe")
+	}
 	log.Printf("we are all synced")
 }

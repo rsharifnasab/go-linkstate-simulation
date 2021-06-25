@@ -124,5 +124,5 @@ func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 	}
 	<-manager.readyChannel
 
-	router.writeAsString(1)
+	router.writeAsString("safe")
 }
