@@ -1,10 +1,12 @@
 package main
 
 import (
+	"log"
 	"net"
 )
 
 func main() {
+	log.Println("Server is running")
 	manager := &Manager{}
 	manager.loadConfig()
 	listener, err := net.Listen("tcp", ":8585")
