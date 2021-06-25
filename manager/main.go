@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os/exec"
+	"time"
 )
 
 func main() {
@@ -26,6 +27,7 @@ func main() {
 		pnc(err)
 		go manager.handleRouter(i, conn)
 	}
+	time.Sleep(1 * time.Second)
 }
 
 func initLogger() {

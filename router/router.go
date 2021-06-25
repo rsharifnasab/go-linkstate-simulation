@@ -15,7 +15,7 @@ var managerReader *bufio.Reader
 func main() {
 	udpConn, err, port := startUDPServer()
 	pnc(err)
-	logFile := initloger(udpConn.LocalAddr())
+	logFile := initloger(port)
 	defer logFile.Close()
 
 	managerConnection, err := net.Dial("tcp", "localhost:8585")
@@ -25,10 +25,11 @@ func main() {
 	managerReader = bufio.NewReader(managerConnection)
 	managerWriter = bufio.NewWriter(managerConnection)
 	managerWrite(port)
+
+	_ = udpConn
 }
 
-func initloger(myAdd net.Addr) *os.File {
-	port := myAdd.(*net.UDPAddr).Port
+func initloger(port int) *os.File {
 	logFileAdd := fmt.Sprintf("../%v.log", port)
 	logFile, err := os.OpenFile(logFileAdd, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	pnc(err)
@@ -42,7 +43,6 @@ func initloger(myAdd net.Addr) *os.File {
 }
 
 func managerWrite(data interface{}) {
-	//fmt.Fprintf(os.Stderr, "--%v\n", data)
 	managerWriter.WriteString(fmt.Sprintf("%v\n", data))
 	pnc(managerWriter.Flush())
 }
