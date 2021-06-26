@@ -16,6 +16,6 @@ func main() {
 	router.getPortMap()
 	go router.sendAcknowledgements()
 	router.testNeighbouringLinks()
-	// router.waitNetworkReadiness()
+	router.waitNetworkReadiness()
 	time.Sleep(10 * time.Second)
 }

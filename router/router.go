@@ -151,7 +151,7 @@ func (router *Router) sendReadySignal() {
 func (router *Router) waitForNetworkSafety() {
 	message := router.readStringFromManager()
 	if message != "safe" {
-		panic("we are not safe")
+		log.Fatal("we are not safe")
 	}
 	log.Printf("we are all safe")
 }
@@ -187,7 +187,7 @@ func (router *Router) getAckResponse(conn net.Conn, index, port int) {
 	ackResponse, err := bufio.NewReader(conn).ReadString('\n')
 	pnc(err)
 	if ackResponse != "ack\n" {
-		panic(fmt.Sprintf("Who are you not to acknowledge me router #%v listening on port %v by saying %v", index, port, ackResponse))
+		log.Fatal(fmt.Sprintf("Who are you not to acknowledge me router #%v listening on port %v by saying %v", index, port, ackResponse))
 	}
 	log.Printf("received ack from %v on %v\n", index, port)
 
@@ -208,5 +208,14 @@ func (router *Router) sendAcknowledgements() {
 		//log.Printf("(udp server) ack req from  router[%v]", string(ackRequest[:n-1]))
 		router.conn.WriteTo([]byte("ack\n"), addr)
 		log.Printf("(udp server) acknowledged  router[%v]", string(ackRequest[:n-1]))
+	}
+}
+
+func (router *Router) waitNetworkReadiness() {
+	str := router.readStringFromManager()
+	if str != "NETWORK_READY" {
+		log.Fatal("manager didn't sent network ready")
+	} else {
+		log.Printf("network is ready")
 	}
 }
