@@ -116,18 +116,24 @@ func (router *Router) writeAsBytes(obj interface{}) {
 func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 	router := manager.routers[routerIndex]
 	router.Port = router.readInt()
+
 	log.Printf("router #%v connected, udp port: %v\n", router.Index, router.Port)
+
 	router.writeAsString(router.Index)
-	// send connectivity table
 	router.writeAsString(manager.routersCount)
 	router.writeAsBytes(manager.netConns[router.Index])
-	manager.getReadySignalFromRouter(router)
-	<-manager.readyChannel
-	router.writeAsString("safe")
-	manager.sendPortMap(router)
-	manager.getAcksReceivedFromRouter(router)
-	<-manager.networkReadyChannel
+	log.Printf("connectivity table sent for router[%v]", router.Index)
+
+	manager.getReadySignalFromRouter(router) // wait for this router
+	<-manager.readyChannel                   // wait for other routers
+	router.writeAsString("safe")             // tell routers they can ack
+	manager.sendPortMap(router)              // send all routers ports  to our router
+
+	manager.getAcksReceivedFromRouter(router) // my router got portmap
+	<-manager.networkReadyChannel             // all routers got portmap
+
 	router.writeAsString("NETWORK_READY")
+
 }
 
 func (manager *Manager) getReadySignalFromRouter(router *Router) {
@@ -144,9 +150,6 @@ func (manager *Manager) sendPortMap(router *Router) {
 	for _, edge := range manager.netConns[router.Index] {
 		portMap[edge.Dest] = manager.routers[edge.Dest].Port
 	}
-	// marshalledPortMap, err := json.Marshal(portMap)
-	// pnc(err)
-	// fmt.Printf("portMap is %v\n. it was encoded into: %v\n", portMap, string(marshalledPortMap))
 	router.writeAsBytes(portMap)
 }
 

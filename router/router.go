@@ -166,7 +166,7 @@ func (router *Router) testNeighbouringLinks() {
 	for _, edge := range router.neighbours {
 		index := edge.Dest
 		port := router.portMap[index]
-		log.Printf("dialing to router[%v] on port %v\n", index, port)
+		//log.Printf("dialing to router[%v] on port %v\n", index, port)
 		conn := dialUDP(fmt.Sprintf("localhost:%v", port))
 		router.sendAckRequest(conn, index, port)
 		router.getAckResponse(conn, index, port)
@@ -218,4 +218,11 @@ func (router *Router) waitNetworkReadiness() {
 	} else {
 		log.Printf("network is ready")
 	}
+}
+
+func (router *Router) recieveLSPs() {
+}
+
+func (router *Router) sendLSP() {
+
 }

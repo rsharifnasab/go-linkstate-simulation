@@ -8,7 +8,7 @@ find . -type f -name "*.log" -delete
 clear 
 (
     cd router
-    go build
+    go build -race
 )
 
 
