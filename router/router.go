@@ -13,24 +13,25 @@ import (
 
 type Router struct {
 	conn    *net.UDPConn
-	Port    int
-	Index   int
+	port    int
+	index   int
 	logFile *os.File
 
 	routersCount      int
 	neighbours        []*Edge
+	portMap           map[int]int
 	managerConnection *net.TCPConn
 	managerWriter     *bufio.Writer
 	managerReader     *bufio.Reader
 }
 
 type Edge struct {
-	Dest *Router
+	Dest int
 	Cost int
 }
 
 func (router *Router) InitLogger() {
-	logFileAdd := fmt.Sprintf("../%v.log", router.Port)
+	logFileAdd := fmt.Sprintf("../%v.log", router.port)
 	logFile, err := os.OpenFile(logFileAdd, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	pnc(err)
 
@@ -40,7 +41,7 @@ func (router *Router) InitLogger() {
 	log.SetFlags(0)
 	log.Printf("")
 	//log.Printf("- - - %v logger - - -", port)
-	log.SetPrefix(fmt.Sprintf("child %v ", router.Port))
+	log.SetPrefix(fmt.Sprintf("child %v ", router.port))
 
 }
 
@@ -49,6 +50,11 @@ func (router *Router) StartUDPServer() {
 	var err error
 	for failures := 0; failures < MAX_TRIES; failures++ {
 		port := getSomeFreePort()
+		// log.Printf("getSomeFreePort() provided port number %v\n", port)
+		if port == 0 {
+			log.Fatal("system provided port number 0")
+			continue
+		}
 		addr := net.UDPAddr{
 			Port: port,
 			IP:   net.ParseIP("127.0.0.1"),
@@ -56,15 +62,11 @@ func (router *Router) StartUDPServer() {
 		conn, err := net.ListenUDP("udp", &addr)
 		if err == nil {
 			router.conn = conn
-			router.Port = port
-			return
+			router.port = port
+			break
 		}
 	}
 	pnc(err)
-}
-
-func (router *Router) readConnTable() {
-	log.Printf("read conn table")
 }
 
 func getSomeFreePort() int {
@@ -77,7 +79,7 @@ func getSomeFreePort() int {
 
 func pnc(err error) {
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
 func (router *Router) connectToManager(add string) {
@@ -110,6 +112,13 @@ func (router *Router) readStringFromManager() string {
 	pnc(err)
 	return strings.TrimSpace(str)
 }
+
+func (router *Router) readBytesFromManager() []byte {
+	rawMessage, err := router.managerReader.ReadBytes('\n')
+	pnc(err)
+	return rawMessage[:len(rawMessage)-1]
+}
+
 func (router *Router) readIntFromManager() int {
 	num, err := strconv.Atoi(router.readStringFromManager())
 	pnc(err)
@@ -117,17 +126,17 @@ func (router *Router) readIntFromManager() int {
 }
 
 func (router *Router) getIndexFromManager() {
-	router.Index = router.readIntFromManager()
+	router.index = router.readIntFromManager()
 }
 
 func (router *Router) readConnectivityTable() {
 	router.routersCount = router.readIntFromManager()
-	log.Printf("received %v. waiting for connectivity table", router.routersCount)
+	log.Printf("router #%v waking up", router.index)
 	rawMessage, err := router.managerReader.ReadBytes('\n')
 	pnc(err)
 	pnc(json.Unmarshal(rawMessage, &router.neighbours))
 	for _, edge := range router.neighbours {
-		log.Printf("%+v\n", edge)
+		log.Printf("{Dest: %+v, Cost: %v}\n", edge.Dest, edge.Cost)
 	}
 }
 
@@ -144,11 +153,58 @@ func (router *Router) waitForNetworkSafety() {
 	if message != "safe" {
 		panic("we are not safe")
 	}
-	log.Printf("we are all synced")
+	log.Printf("we are all safe")
+}
+
+func (router *Router) getPortMap() {
+	rawMessage := router.readBytesFromManager()
+	pnc(json.Unmarshal(rawMessage, &router.portMap))
 }
 
 func (router *Router) testNeighbouringLinks() {
-	// for _, edge := range router.neighbours {
+	for _, edge := range router.neighbours {
+		index := edge.Dest
+		port := router.portMap[index]
+		log.Printf("connecting to %v on %v\n", index, port)
+		conn := dialUDP(fmt.Sprintf("localhost:%v", port))
+		router.sendAckRequest(conn, index, port)
+		router.getAckResponse(conn, index, port)
+		conn.Close()
+	}
+	router.writeToManager("ACKS_RECEIVED")
+}
 
-	// }
+func (router *Router) sendAckRequest(conn net.Conn, index, port int) {
+	writer := bufio.NewWriter(conn)
+	writer.WriteString("ack?\n")
+	writer.Flush()
+	log.Printf("sent ack request to %v on %v\n", index, port)
+}
+
+func (router *Router) getAckResponse(conn net.Conn, index, port int) {
+	ackResponse, err := bufio.NewReader(conn).ReadString('\n')
+	pnc(err)
+	if ackResponse != "ack\n" {
+		panic(fmt.Sprintf("Who are you not to acknowledge me router #%v listening on port %v by saying %v", index, port, ackResponse))
+	}
+	log.Printf("received ack from %v on %v\n", index, port)
+
+}
+
+func dialUDP(addr string) net.Conn {
+	conn, err := net.Dial("udp", addr)
+	pnc(err)
+	return conn
+}
+
+func (router *Router) sendAcknowledgements() {
+	for i := 0; i < len(router.neighbours); i++ {
+		go func() {
+			ackRequest := make([]byte, 100)
+			_, addr, err := router.conn.ReadFromUDP(ackRequest)
+			pnc(err)
+			router.conn.WriteToUDP([]byte("ack\n"), addr)
+			// log.Printf("acknowledged some router")
+		}()
+	}
 }

@@ -31,11 +31,11 @@ func main() {
 	log.Printf("waiting for routers to get ready")
 	manager.readyWG.Wait()
 	close(manager.readyChannel)
-
+	log.Printf("all routers got ready. waiting for routers to check their direct links")
 	manager.networkReadyWG.Add(manager.routersCount)
 	manager.networkReadyWG.Wait()
 	close(manager.networkReadyChannel)
-	log.Printf("all routers got ready")
+	log.Printf("Network is ready")
 
 	time.Sleep(3 * time.Second)
 	for _, router := range manager.routers {

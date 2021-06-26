@@ -24,7 +24,7 @@ type Manager struct {
 }
 
 type Edge struct {
-	Dest *Router
+	Dest int
 	Cost int
 }
 
@@ -45,12 +45,13 @@ func newManagerWithConfig(configFile string) *Manager {
 	config := loadConfig(configFile)
 	routersCount := config.GetInt("number_of_routers")
 	manager := &Manager{
-		routersCount:   routersCount,
-		netConns:       make([][]Edge, routersCount),
-		readyWG:        sync.WaitGroup{},
-		networkReadyWG: sync.WaitGroup{},
-		readyChannel:   make(chan struct{}),
-		routers:        make([]*Router, routersCount),
+		routersCount:        routersCount,
+		netConns:            make([][]Edge, routersCount),
+		readyWG:             sync.WaitGroup{},
+		networkReadyWG:      sync.WaitGroup{},
+		readyChannel:        make(chan struct{}),
+		networkReadyChannel: make(chan struct{}),
+		routers:             make([]*Router, routersCount),
 	}
 	for i := 0; i < manager.routersCount; i++ {
 		manager.netConns[i] = make([]Edge, 0)
@@ -62,9 +63,9 @@ func newManagerWithConfig(configFile string) *Manager {
 
 	for _, configEdge := range configEdges {
 		manager.netConns[configEdge.Node1] =
-			append(manager.netConns[configEdge.Node1], Edge{Dest: manager.routers[configEdge.Node2], Cost: configEdge.Cost})
+			append(manager.netConns[configEdge.Node1], Edge{Dest: configEdge.Node2, Cost: configEdge.Cost})
 		manager.netConns[configEdge.Node2] =
-			append(manager.netConns[configEdge.Node2], Edge{Dest: manager.routers[configEdge.Node1], Cost: configEdge.Cost})
+			append(manager.netConns[configEdge.Node2], Edge{Dest: configEdge.Node1, Cost: configEdge.Cost})
 	}
 	return manager
 }
@@ -120,20 +121,39 @@ func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 	// send connectivity table
 	router.writeAsString(manager.routersCount)
 	router.writeAsBytes(manager.netConns[router.Index])
+	manager.getReadySignalFromRouter(router)
+	<-manager.readyChannel
+	router.writeAsString("safe")
+	manager.sendPortMap(router)
+	manager.getAcksReceivedFromRouter(router)
+	<-manager.networkReadyChannel
+	router.writeAsString("NETWORK_READY")
+}
+
+func (manager *Manager) getReadySignalFromRouter(router *Router) {
 	readiness := router.readString()
 	if readiness == "READY" {
 		manager.readyWG.Done()
 	} else {
 		panic("Router couldn't get ready.")
 	}
-	<-manager.readyChannel
-	router.writeAsString("safe")
-	readiness = router.readString()
-	if readiness == "ACKS_RECEIVED" {
-		manager.networkReadyWG.Done()
-	} else {
-		panic("Router couldn't get ready.")
+}
+
+func (manager *Manager) sendPortMap(router *Router) {
+	portMap := make(map[int]int)
+	for _, edge := range manager.netConns[router.Index] {
+		portMap[edge.Dest] = manager.routers[edge.Dest].Port
 	}
-	<-manager.networkReadyChannel
-	router.writeAsString("NETWORK_READY")
+	// marshalledPortMap, err := json.Marshal(portMap)
+	// pnc(err)
+	// fmt.Printf("portMap is %v\n. it was encoded into: %v\n", portMap, string(marshalledPortMap))
+	router.writeAsBytes(portMap)
+}
+
+func (manager *Manager) getAcksReceivedFromRouter(router *Router) {
+	str := router.readString()
+	if str != "ACKS_RECEIVED" {
+		panic(fmt.Sprintf("router #%v didn't receive acks: %v", router.Index, str))
+	}
+	manager.networkReadyWG.Done()
 }
