@@ -24,7 +24,7 @@ func main() {
 	router.waitNetworkReadiness()
 
 	go router.recieveLSPs()
-	router.sendLSP()
+	router.sendLSPs()
 
 	time.Sleep(10 * time.Second)
 }

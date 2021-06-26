@@ -13,15 +13,19 @@ import (
 )
 
 type Router struct {
-	conn net.PacketConn
+	conn *net.UDPConn
 
 	port    int
 	index   int
 	logFile *os.File
 
-	routersCount      int
-	neighbours        []*Edge
-	portMap           map[int]int
+	routersCount int
+	neighbours   []*Edge
+	netConns     [][]Edge
+
+	portMap        map[int]int
+	mergedPortMaps map[int]int
+
 	managerConnection *net.TCPConn
 	managerWriter     *bufio.Writer
 	managerReader     *bufio.Reader
@@ -60,7 +64,7 @@ func (router *Router) StartUDPServer() {
 		addr := fmt.Sprintf(":%d", port)
 		conn, err := net.ListenPacket("udp", addr)
 		if err == nil {
-			router.conn = conn
+			router.conn = conn.(*net.UDPConn)
 			router.port = port
 			break
 		}
@@ -132,8 +136,7 @@ func (router *Router) getIndexFromManager() {
 func (router *Router) readConnectivityTable() {
 	router.routersCount = router.readIntFromManager()
 	log.Printf("router #%v waking up", router.index)
-	rawMessage, err := router.managerReader.ReadBytes('\n')
-	pnc(err)
+	rawMessage := router.readBytesFromManager()
 	pnc(json.Unmarshal(rawMessage, &router.neighbours))
 	for _, edge := range router.neighbours {
 		log.Printf("{Dest: %+v, Cost: %v}\n", edge.Dest, edge.Cost)
@@ -220,9 +223,62 @@ func (router *Router) waitNetworkReadiness() {
 	}
 }
 
-func (router *Router) recieveLSPs() {
+func (router *Router) initalCombinedTables() {
+	router.netConns = make([][]Edge, router.routersCount)
+	for i := 0; i < router.routersCount; i++ {
+		router.netConns[i] = make([]Edge, 0)
+	}
+
+	router.mergedPortMaps = make(map[int]int)
+	for k, v := range router.portMap {
+		router.mergedPortMaps[k] = v
+	}
 }
 
-func (router *Router) sendLSP() {
+// TODO
+// see also sendLSPTo
+func (router *Router) recieveLSPs() {
+	router.initalCombinedTables()
 
+	log.Printf("(udp server lsp) ready to get LSPs")
+	for i := 0; i < len(router.neighbours); i++ {
+		recievedTable := make([]byte, 1000)
+		_, _, err := router.conn.ReadFrom(recievedTable[:])
+		//log.Printf("conn type is : %T", router.conn)
+		reader := bufio.NewReader(router.conn)
+		_ = reader
+		pnc(err)
+		// todo: set recieved table to router.netConns, router.mergedPortMaps
+		log.Printf("(udp server lsp) recieved LSP from router[%v]", -1) // TODO
+	}
+}
+
+func (router *Router) writeUDPAsBytes(index int, data []byte) {
+	port := router.portMap[index]
+	conn := dialUDP(fmt.Sprintf("localhost:%v", port))
+	defer conn.Close()
+	data = append(data, '\n')
+	_, err := conn.Write(data)
+	pnc(err)
+}
+
+func (router *Router) sendLSPTo(index int) {
+	log.Printf("sending lsp to router[%v]\n", index)
+
+	neighboursBytes, err := json.Marshal(router.neighbours)
+	pnc(err)
+	router.writeUDPAsBytes(index, neighboursBytes)
+
+	portMapBytes, err := json.Marshal(router.portMap)
+	pnc(err)
+	router.writeUDPAsBytes(index, portMapBytes)
+
+}
+
+func (router *Router) sendLSPs() {
+	//log.Printf("sending LSP to others")
+	for _, edge := range router.neighbours {
+		router.sendLSPTo(edge.Dest)
+	}
+	//router.writeToManager("ACKS_RECEIVED")
 }
