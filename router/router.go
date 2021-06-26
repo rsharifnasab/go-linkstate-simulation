@@ -7,12 +7,14 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 )
 
 type Router struct {
-	conn    *net.UDPConn
+	conn net.PacketConn
+
 	port    int
 	index   int
 	logFile *os.File
@@ -55,11 +57,8 @@ func (router *Router) StartUDPServer() {
 			log.Fatal("system provided port number 0")
 			continue
 		}
-		addr := net.UDPAddr{
-			Port: port,
-			IP:   net.ParseIP("127.0.0.1"),
-		}
-		conn, err := net.ListenUDP("udp", &addr)
+		addr := fmt.Sprintf(":%d", port)
+		conn, err := net.ListenPacket("udp", addr)
 		if err == nil {
 			router.conn = conn
 			router.port = port
@@ -79,6 +78,7 @@ func getSomeFreePort() int {
 
 func pnc(err error) {
 	if err != nil {
+		log.Writer().Write(debug.Stack())
 		log.Fatal(err)
 	}
 }
@@ -162,21 +162,23 @@ func (router *Router) getPortMap() {
 }
 
 func (router *Router) testNeighbouringLinks() {
+	log.Printf("checking neighbouring links")
 	for _, edge := range router.neighbours {
 		index := edge.Dest
 		port := router.portMap[index]
-		log.Printf("connecting to %v on %v\n", index, port)
+		log.Printf("dialing to router[%v] on port %v\n", index, port)
 		conn := dialUDP(fmt.Sprintf("localhost:%v", port))
 		router.sendAckRequest(conn, index, port)
 		router.getAckResponse(conn, index, port)
 		conn.Close()
+		//log.Printf("%v check", edge.Dest)
 	}
 	router.writeToManager("ACKS_RECEIVED")
 }
 
 func (router *Router) sendAckRequest(conn net.Conn, index, port int) {
 	writer := bufio.NewWriter(conn)
-	writer.WriteString("ack?\n")
+	writer.WriteString(fmt.Sprintf("%v\n", router.index))
 	writer.Flush()
 	log.Printf("sent ack request to %v on %v\n", index, port)
 }
@@ -198,13 +200,13 @@ func dialUDP(addr string) net.Conn {
 }
 
 func (router *Router) sendAcknowledgements() {
+	log.Printf("(udp server) listening for other routers")
 	for i := 0; i < len(router.neighbours); i++ {
-		go func() {
-			ackRequest := make([]byte, 100)
-			_, addr, err := router.conn.ReadFromUDP(ackRequest)
-			pnc(err)
-			router.conn.WriteToUDP([]byte("ack\n"), addr)
-			// log.Printf("acknowledged some router")
-		}()
+		ackRequest := make([]byte, 100)
+		n, addr, err := router.conn.ReadFrom(ackRequest[:])
+		pnc(err)
+		//log.Printf("(udp server) ack req from  router[%v]", string(ackRequest[:n-1]))
+		router.conn.WriteTo([]byte("ack\n"), addr)
+		log.Printf("(udp server) acknowledged  router[%v]", string(ackRequest[:n-1]))
 	}
 }

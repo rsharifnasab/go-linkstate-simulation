@@ -14,8 +14,8 @@ clear
 
 (
     cd manager
-    go build 
-    ./manager || true
+    go run -race . || true
+    #./manager || true
 )
 
 cat ./*.log
