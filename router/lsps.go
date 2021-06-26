@@ -33,10 +33,10 @@ func (router *Router) addToNetConns(index int, neighbours []*Edge) {
 	for _, v := range neighbours {
 		log.Printf("  %v", v.Dest)
 	}
+
+	//TODO: add neighbors to router.netConns properly
 }
 
-// TODO
-// see also sendLSPTo
 func (router *Router) recieveLSPs() {
 	router.initalCombinedTables()
 
@@ -46,9 +46,9 @@ func (router *Router) recieveLSPs() {
 		lsp := &LSP{}
 		err := json.Unmarshal(data, lsp)
 		pnc(err)
-		// todo: set recieved table to router.netConns, router.mergedPortMaps
 		router.addToMergedPortMap(lsp.PortMap)
 		router.addToNetConns(lsp.SenderIndex, lsp.Neighbours)
+		// TODO: broadcast lsp to others
 
 		log.Printf("(lsp server) recieved LSP from router[%v]", lsp.SenderIndex) // TODO
 	}
