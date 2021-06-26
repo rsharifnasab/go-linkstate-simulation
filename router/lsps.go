@@ -39,9 +39,10 @@ func (router *Router) sendLSPTo(index int) {
 }
 
 func (router *Router) sendLSPs() {
-	//log.Printf("sending LSP to others")
+	log.Printf("(lsp client) sending LSP to others {{")
 	for _, edge := range router.neighbours {
 		router.sendLSPTo(edge.Dest)
 	}
 	//router.writeToManager("ACKS_RECEIVED")
+	log.Printf("}} (lsp client) all lsps send")
 }

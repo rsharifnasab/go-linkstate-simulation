@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bufio"
-	"io"
 	"log"
 	"net"
 	"os/exec"
@@ -40,25 +38,5 @@ func main() {
 	time.Sleep(3 * time.Second)
 	for _, router := range manager.routers {
 		router.conn.Close()
-	}
-}
-
-func initLogger() {
-	log.SetFlags(0)
-	log.Println("Server is running")
-}
-func handleChildError(reader io.ReadCloser, i int) {
-	sc := bufio.NewScanner(reader)
-	for {
-		if !sc.Scan() {
-			return
-		}
-		log.Printf("child %d : %s\n", i, sc.Text())
-	}
-}
-
-func pnc(err error) {
-	if err != nil {
-		panic(err)
 	}
 }

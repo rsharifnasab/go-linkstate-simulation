@@ -1,13 +1,6 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
-	"fmt"
-	"log"
-	"net"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/spf13/viper"
@@ -68,95 +61,4 @@ func newManagerWithConfig(configFile string) *Manager {
 			append(manager.netConns[configEdge.Node2], Edge{Dest: configEdge.Node1, Cost: configEdge.Cost})
 	}
 	return manager
-}
-
-type Router struct {
-	conn   net.Conn
-	reader *bufio.Reader
-	writer *bufio.Writer
-	Index  int
-	Port   int
-}
-
-// change name to set connection
-func (router *Router) setConnection(conn net.Conn) {
-	router.conn = conn
-	router.reader = bufio.NewReader(conn)
-	router.writer = bufio.NewWriter(conn)
-}
-
-func (router *Router) readString() string {
-	str, err := router.reader.ReadString('\n')
-	pnc(err)
-	return strings.TrimSpace(str)
-}
-
-func (router *Router) readInt() int {
-	num, err := strconv.Atoi(router.readString())
-	pnc(err)
-	return num
-}
-
-func (router *Router) writeAsString(obj interface{}) {
-	router.writer.WriteString(fmt.Sprintf("%v\n", obj))
-	router.writer.Flush()
-}
-
-func (router *Router) writeAsBytes(obj interface{}) {
-	marshalled, err := json.Marshal(obj)
-	pnc(err)
-	buf := make([]byte, 0)
-	buf = append(buf, marshalled...)
-	buf = append(buf, '\n')
-	_, err = router.writer.Write(buf)
-	pnc(err)
-	router.writer.Flush()
-}
-
-func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
-	router := manager.routers[routerIndex]
-	router.Port = router.readInt()
-
-	log.Printf("router #%v connected, udp port: %v\n", router.Index, router.Port)
-
-	router.writeAsString(router.Index)
-	router.writeAsString(manager.routersCount)
-	router.writeAsBytes(manager.netConns[router.Index])
-	log.Printf("connectivity table sent for router[%v]", router.Index)
-
-	manager.getReadySignalFromRouter(router) // wait for this router
-	<-manager.readyChannel                   // wait for other routers
-	router.writeAsString("safe")             // tell routers they can ack
-	manager.sendPortMap(router)              // send all routers ports  to our router
-
-	manager.getAcksReceivedFromRouter(router) // my router got portmap
-	<-manager.networkReadyChannel             // all routers got portmap
-
-	router.writeAsString("NETWORK_READY")
-
-}
-
-func (manager *Manager) getReadySignalFromRouter(router *Router) {
-	readiness := router.readString()
-	if readiness == "READY" {
-		manager.readyWG.Done()
-	} else {
-		panic("Router couldn't get ready.")
-	}
-}
-
-func (manager *Manager) sendPortMap(router *Router) {
-	portMap := make(map[int]int)
-	for _, edge := range manager.netConns[router.Index] {
-		portMap[edge.Dest] = manager.routers[edge.Dest].Port
-	}
-	router.writeAsBytes(portMap)
-}
-
-func (manager *Manager) getAcksReceivedFromRouter(router *Router) {
-	str := router.readString()
-	if str != "ACKS_RECEIVED" {
-		panic(fmt.Sprintf("router #%v didn't receive acks: %v", router.Index, str))
-	}
-	manager.networkReadyWG.Done()
 }
