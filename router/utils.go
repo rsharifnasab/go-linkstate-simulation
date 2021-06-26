@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net"
@@ -34,7 +35,7 @@ func (router *Router) InitLogger() {
 	log.SetFlags(0)
 	log.Printf("")
 	//log.Printf("- - - %v logger - - -", port)
-	log.SetPrefix(fmt.Sprintf("child %v ", router.port))
+	log.SetPrefix(fmt.Sprintf("router on %v ", router.port))
 
 }
 
@@ -57,12 +58,25 @@ func dialUDP(addr string) net.Conn {
 	return conn
 }
 
+func (router *Router) readUDPAsBytes() []byte {
+	buff := make([]byte, 1024*1024)
+	n, _, err := router.conn.ReadFrom(buff)
+	pnc(err)
+
+	return buff[:n]
+}
+
 // open an udp socket and send byte slice to specified router
 func (router *Router) writeUDPAsBytes(index int, data []byte) {
 	port := router.portMap[index]
 	conn := dialUDP(fmt.Sprintf("localhost:%v", port))
 	defer conn.Close()
-	data = append(data, '\n')
+
+	//toSendData := make([]byte, 0)
+	//toSendData = append(toSendData, data...)
+	//toSendData = append(toSendData, '\n')
+	//_, err := conn.Write(toSendData)
+
 	_, err := conn.Write(data)
 	pnc(err)
 }
@@ -82,9 +96,12 @@ func (router *Router) StartUDPServer() {
 		conn, err := net.ListenPacket("udp", addr)
 		if err == nil {
 			router.conn = conn.(*net.UDPConn)
+			router.connReader = bufio.NewReader(router.conn)
+			router.connWriter = bufio.NewWriter(router.conn)
 			router.port = port
 			break
 		}
+		router.connWriter.Write([]byte("salam"))
 	}
 	pnc(err)
 }
@@ -93,9 +110,9 @@ func (router *Router) StartUDPServer() {
 // for keep all connections in network, not just ours.
 // this function will initialize it from primary table
 func (router *Router) initalCombinedTables() {
-	router.netConns = make([][]Edge, router.routersCount)
+	router.netConns = make([][]*Edge, router.routersCount)
 	for i := 0; i < router.routersCount; i++ {
-		router.netConns[i] = make([]Edge, 0)
+		router.netConns[i] = make([]*Edge, 0)
 	}
 
 	router.mergedPortMaps = make(map[int]int)

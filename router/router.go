@@ -7,7 +7,9 @@ import (
 )
 
 type Router struct {
-	conn *net.UDPConn
+	conn       *net.UDPConn
+	connReader *bufio.Reader
+	connWriter *bufio.Writer
 
 	port    int
 	index   int
@@ -15,7 +17,7 @@ type Router struct {
 
 	routersCount int
 	neighbours   []*Edge
-	netConns     [][]Edge
+	netConns     [][]*Edge
 
 	portMap        map[int]int
 	mergedPortMaps map[int]int
