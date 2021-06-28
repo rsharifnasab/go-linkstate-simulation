@@ -40,8 +40,3 @@ you can read full description in `todo.pdf`
 + if a router fail before initializing the log file, it will send that failing log to manager (manager is watching router processes stderr files)
 
 + `run.sh` will print all log files in order with one line between them, so you don't need to do anything in order to see logs.
-
-
-
-
-
