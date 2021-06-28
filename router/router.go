@@ -2,8 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
-	"log"
 	"net"
 	"os"
 	"sync"
@@ -41,55 +39,10 @@ type Edge struct {
 	Cost int
 }
 
-type Packet struct {
-	From      int
-	To        int
-	CostToNow int
-
-	Data string
-}
-
 func NewRouter() *Router {
 	return &Router{
 		managerPacketsDone: make(chan struct{}),
 		mergedPortMapLock:  sync.RWMutex{},
-	}
-}
-
-func (packet *Packet) serialize() []byte {
-	return []byte(fmt.Sprintf("%d %d %d %s",
-		packet.From, packet.To, packet.CostToNow, packet.Data))
-}
-func (router *Router) writePacketTo(nextHop int, packet *Packet) {
-	router.writeUDPAsBytes(nextHop, packet.serialize())
-}
-
-func (router *Router) updatePacket(nextHop int, packet *Packet) {
-	for _, v := range router.neighbours {
-		if v.Dest == nextHop {
-			packet.CostToNow += v.Cost
-			packet.Data = fmt.Sprintf("%s:%d", packet.Data, nextHop)
-			return
-		}
-	}
-	log.Fatalf("cannot find next hop cost (%v) for packet (%+v)", nextHop, packet)
-}
-func (router *Router) sendPacket(rawPacket string) {
-
-	packet := parsePacket(rawPacket)
-	if packet.To == router.index {
-		log.Printf("Receive packet from #%v with cost %v. [%v]", packet.From, packet.CostToNow, packet.Data)
-	} else {
-		nextHop, ok := router.forwardingTable[packet.To]
-		if !ok {
-			log.Printf("problem forwarding packet (%v) from router #%v to %v\n",
-				rawPacket, packet.From, packet.To)
-		} else {
-
-			log.Printf("forwarding [%v] to nextHop router #%v\n", rawPacket, nextHop)
-			router.updatePacket(nextHop, packet)
-			router.writePacketTo(nextHop, packet)
-		}
 	}
 }
 
@@ -99,22 +52,17 @@ func (router *Router) forwardPacketsFromManager() {
 		if data == "QUIT" {
 			close(router.managerPacketsDone)
 		} else {
-			router.sendPacket(data)
+			rawPacket := RawPacket(data)
+			router.sendPacket(rawPacket)
 		}
 	}
 }
 
-// determine packets in udp buffer
-// they are from previous broadcasting
-func isPacketBad(packet string) bool {
-	return packet[0] == '{'
-}
-
 func (router *Router) forwardPacketsFromOtherRouters() {
 	for {
-		packet := string(router.readUDPAsBytes())
-		for isPacketBad(packet) {
-			packet = string(router.readUDPAsBytes())
+		packet := RawPacket(router.readUDPAsBytes())
+		for packet.isBad() {
+			packet = RawPacket(router.readUDPAsBytes())
 		}
 		router.sendPacket(packet)
 	}

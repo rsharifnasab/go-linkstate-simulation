@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"runtime/debug"
-	"strings"
 )
 
 func pnc(err error) {
@@ -126,13 +125,4 @@ func createSlice(size int, defaultValue int) []int {
 		slice[i] = defaultValue
 	}
 	return slice
-}
-
-func parsePacket(rawPacket string) *Packet {
-	rawPacket = strings.TrimSpace(rawPacket)
-	packet := &Packet{}
-	_, err := fmt.Sscanf(rawPacket, "%d %d %d %s",
-		&packet.From, &packet.To, &packet.CostToNow, &packet.Data)
-	pnc(err)
-	return packet
 }
