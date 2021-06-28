@@ -98,7 +98,6 @@ func (router *Router) StartUDPServer() {
 			router.port = port
 			break
 		}
-		//router.connWriter.Write([]byte("salam"))
 	}
 	pnc(err)
 }
