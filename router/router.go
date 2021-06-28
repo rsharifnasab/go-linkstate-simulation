@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"net"
 	"os"
+	"time"
 )
 
 type Router struct {
@@ -32,4 +33,21 @@ type Router struct {
 type Edge struct {
 	Dest int
 	Cost int
+}
+
+func (router *Router) sendPacket(packet string) {
+
+}
+
+func (router *Router) sendPacketsGotFromManager() {
+	for {
+		data := router.readStringFromManager()
+		if data == "QUIT" {
+			time.Sleep(1 * time.Second)
+			os.Exit(0)
+		}
+
+		router.sendPacket(data)
+
+	}
 }

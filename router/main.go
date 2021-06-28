@@ -27,5 +27,8 @@ func main() {
 	router.recieveLSPs()
 
 	router.calculateSPT()
+
+	go router.sendPacketsGotFromManager()
+
 	time.Sleep(10 * time.Second)
 }
