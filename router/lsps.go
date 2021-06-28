@@ -48,7 +48,7 @@ func (router *Router) receiveSingleLSP() *LSP {
 
 func (router *Router) recieveLSPs() {
 
-	log.Printf("(lsp server) ready to get LSPs")
+	log.Printf("(lsp server) listening to other routers LSPs started")
 	remainingTables := router.routersCount - 1
 	isTableReceived := make([]bool, router.routersCount)
 	isTableReceived[router.index] = true
@@ -56,18 +56,18 @@ func (router *Router) recieveLSPs() {
 		lsp := router.receiveSingleLSP()
 		if !isTableReceived[lsp.SenderIndex] {
 			remainingTables--
-			log.Printf("(lsp server) recieved LSP from router[%v]", lsp.SenderIndex)
+			log.Printf("(lsp server) recieved #%v LSP", lsp.SenderIndex)
 			isTableReceived[lsp.SenderIndex] = true
 			router.addToMergedPortMap(lsp.PortMap)
 			router.addToNetConns(lsp.SenderIndex, lsp.Neighbours)
 			router.broadcastLSP(lsp)
 		}
 	}
-	log.Printf("(lsp server) received the LSPs of all routers")
+	log.Printf("(lsp server) receiving LSPs done")
 }
 
 func (router *Router) sendLSPTo(index int, lsp *LSP) {
-	log.Printf("(lsp client) sending LSP to router[%v]\n", index)
+	log.Printf("(lsp client) sending #%v LSP to router[%v]\n", lsp.SenderIndex, index)
 
 	bytes, err := json.Marshal(lsp)
 	pnc(err)
@@ -75,12 +75,11 @@ func (router *Router) sendLSPTo(index int, lsp *LSP) {
 }
 
 func (router *Router) broadcastLSP(lsp *LSP) {
-	log.Printf("(lsp client) sending LSP to others {{")
+	log.Printf("(lsp client) broadcasting #%v LSP to neighbours", lsp.SenderIndex)
 	for _, edge := range router.neighbours {
 		router.sendLSPTo(edge.Dest, lsp)
 	}
-	//router.writeToManager("ACKS_RECEIVED")
-	log.Printf("}} (lsp client) all lsps send")
+	//log.Printf("(lsp client)  LSPs done")
 }
 
 func (router *Router) broadcastSelfLSP() {

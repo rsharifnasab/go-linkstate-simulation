@@ -2,23 +2,21 @@ package main
 
 import (
 	"log"
-	"sync"
 	"time"
 )
 
 func main() {
-	router := &Router{
-		doneChannel: make(chan struct{}),
-		mpmLock:     sync.RWMutex{},
-	}
+	router := NewRouter()
 	defer router.freeResources()
 
 	router.StartUDPServer()
-	router.InitLogger()
 
 	router.connectToManager("localhost:8585")
 	router.writeToManager(router.port)
 	router.getIndexFromManager()
+
+	router.InitLogger()
+
 	router.readConnectivityTable()
 
 	router.sendReadySignal()
@@ -40,6 +38,6 @@ func main() {
 	go router.forwardPacketsFromOtherRouters()
 	// <-router.doneChannel
 	time.Sleep(2 * time.Second)
-	log.Printf("router #%v done\n", router.index)
+	log.Printf("done\n")
 	time.Sleep(time.Second)
 }

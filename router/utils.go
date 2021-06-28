@@ -26,7 +26,7 @@ func getSomeFreePort() int {
 }
 
 func (router *Router) InitLogger() {
-	logFileAdd := fmt.Sprintf("../%v.log", router.port)
+	logFileAdd := fmt.Sprintf("../%v.log", router.index)
 	logFile, err := os.OpenFile(logFileAdd, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	pnc(err)
 
@@ -35,8 +35,8 @@ func (router *Router) InitLogger() {
 	log.SetOutput(logFile)
 	log.SetFlags(0)
 	log.Printf("")
-	//log.Printf("- - - %v logger - - -", port)
-	log.SetPrefix(fmt.Sprintf("router on %v ", router.port))
+	log.SetPrefix(fmt.Sprintf("router #%v: ", router.index))
+	log.Printf("connected to manager, udp port: %v", router.port)
 
 }
 
@@ -120,7 +120,7 @@ func (router *Router) StartUDPServer() {
 			router.port = port
 			break
 		}
-		router.connWriter.Write([]byte("salam"))
+		//router.connWriter.Write([]byte("salam"))
 	}
 	pnc(err)
 }

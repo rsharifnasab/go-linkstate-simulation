@@ -51,12 +51,13 @@ func (router *Router) getIndexFromManager() {
 }
 
 func (router *Router) readConnectivityTable() {
+	log.Printf("reading connectivity table")
+
 	router.routersCount = router.readIntFromManager()
-	log.Printf("router #%v waking up", router.index)
 	rawMessage := router.readBytesFromManager()
 	pnc(json.Unmarshal(rawMessage, &router.neighbours))
 	for _, edge := range router.neighbours {
-		log.Printf("{Dest: %+v, Cost: %v}\n", edge.Dest, edge.Cost)
+		log.Printf("  {Dest: %+v, Cost: %v}\n", edge.Dest, edge.Cost)
 	}
 }
 
@@ -71,9 +72,9 @@ func (router *Router) sendReadySignal() {
 func (router *Router) waitForNetworkSafety() {
 	message := router.readStringFromManager()
 	if message != "safe" {
-		log.Fatal("we are not safe")
+		log.Fatal("We are not safe")
 	}
-	log.Printf("we are all safe")
+	log.Printf("We are all safe")
 }
 
 func (router *Router) getPortMap() {

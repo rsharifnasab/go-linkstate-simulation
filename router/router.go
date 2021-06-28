@@ -46,6 +46,13 @@ type Packet struct {
 	data        string
 }
 
+func NewRouter() *Router {
+	return &Router{
+		doneChannel: make(chan struct{}),
+		mpmLock:     sync.RWMutex{},
+	}
+}
+
 func (router *Router) sendPacket(rawPacket string) {
 	packet, ok := parsePacket(rawPacket)
 	if !ok {
@@ -53,7 +60,7 @@ func (router *Router) sendPacket(rawPacket string) {
 		return
 	}
 	if packet.destination == router.index {
-		log.Printf("I got the packet originating from router #%v. It says %v. Now what????\n", packet.source, packet.data)
+		log.Printf("Receive packet from #%v. [%v]", packet.source, packet.data)
 		return
 	}
 	nextHop, ok := router.forwardingTable[packet.destination]
@@ -61,7 +68,7 @@ func (router *Router) sendPacket(rawPacket string) {
 		log.Printf("problem forwarding packet (%v) from router #%v to %v\n", rawPacket, router.index, packet.destination)
 		return
 	}
-	log.Printf("router #%v sending %+v to router #%v\n", router.index, packet, nextHop)
+	log.Printf("forwarding [%v] to nextHop router #%v\n", rawPacket, nextHop)
 	router.writeUDPAsBytes(nextHop, []byte(rawPacket))
 }
 
@@ -72,17 +79,18 @@ func (router *Router) forwardPacketsFromManager() {
 			close(router.doneChannel)
 			return
 		}
-		log.Printf("router #%v received packet %v from manager\n", router.index, data)
+		//log.Printf("recieved  [%v] from manager\n", data)
 		router.sendPacket(data)
 	}
 }
 
 func (router *Router) forwardPacketsFromOtherRouters() {
+	// TODO
 	for {
 		packet := string(router.readUDPAsBytes())
 		_, shouldForward := parsePacket(packet)
 		if shouldForward {
-			log.Printf("router #%v received packet: %v\n", router.index, packet)
+			//log.Printf("router #%v received packet: %v\n", router.index, packet)
 			router.sendPacket(packet)
 			// router.sendPacket(packet)
 		} else if packet[0] != '{' {

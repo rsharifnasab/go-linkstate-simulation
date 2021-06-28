@@ -13,13 +13,13 @@ func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 	router := manager.routers[routerIndex]
 	router.Port = router.readInt()
 
-	log.Printf("router #%v connected, udp port: %v\n",
+	log.Printf("router #%v: connected, UDP port: %v\n",
 		router.Index, router.Port)
 
 	router.writeAsString(router.Index)
 	router.writeAsString(manager.routersCount)
 	router.writeAsBytes(manager.netConns[router.Index])
-	log.Printf("connectivity table sent for router[%v]", router.Index)
+	log.Printf("router #%v: connectivity table sent", router.Index)
 
 	manager.getReadySignalFromRouter(router) // wait for this router
 	<-manager.readyChannel                   // wait for other routers
@@ -30,7 +30,8 @@ func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 	<-manager.networkReadyChannel             // all routers got portmap
 
 	router.writeAsString("NETWORK_READY")
-	router.handlePackets()
+
+	router.sendDataPackets()
 }
 
 func (manager *Manager) getReadySignalFromRouter(router *Router) {

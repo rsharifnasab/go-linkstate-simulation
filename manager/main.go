@@ -19,7 +19,7 @@ func main() {
 		go handleChildError(reader, i)
 		routerCmd.Start()
 
-		log.Printf("Created router #%v\n", i)
+		log.Printf("router #%v: created\n", i)
 		conn, err := listener.Accept()
 		pnc(err)
 		manager.routers[i].setConnection(conn)

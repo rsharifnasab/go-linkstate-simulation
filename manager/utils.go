@@ -6,7 +6,7 @@ import (
 
 func initLogger() {
 	log.SetFlags(0)
-	log.Println("Server is running")
+	log.Println("Manager started")
 }
 
 func pnc(err error) {

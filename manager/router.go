@@ -54,10 +54,10 @@ func (router *Router) setConnection(conn net.Conn) {
 	router.writer = bufio.NewWriter(conn)
 }
 
-func (router *Router) handlePackets() {
+func (router *Router) sendDataPackets() {
 	for {
 		packet := <-router.packetChannel
-		log.Printf("packet for #%v: %v\n", router.Index, packet)
+		log.Printf("router #%v: got packet [%v]\n", router.Index, packet)
 		router.writeAsString(packet)
 		if packet == "QUIT" {
 			break

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -78,8 +77,7 @@ func (manager *Manager) sendTestPackets() {
 	pnc(tests.UnmarshalKey("tests", &packets))
 	for _, packet := range packets {
 		manager.routers[packet.From].packetChannel <- serializePacket(&packet)
-		log.Printf("transmitting packet %+v\n", packet)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
 	time.Sleep(100 * time.Millisecond)
 	for i := range manager.routers {
