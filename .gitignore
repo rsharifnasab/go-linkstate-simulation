@@ -2,3 +2,6 @@ manager/manager
 router/router
 *.log
 tags
+
+report.pdf
+readme.pdf
