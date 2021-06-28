@@ -77,10 +77,10 @@ func (router *Router) forwardPacketsFromManager() {
 		data := router.readStringFromManager()
 		if data == "QUIT" {
 			close(router.doneChannel)
-			return
+		} else {
+			//log.Printf("recieved  [%v] from manager\n", data)
+			router.sendPacket(data)
 		}
-		//log.Printf("recieved  [%v] from manager\n", data)
-		router.sendPacket(data)
 	}
 }
 
@@ -96,14 +96,5 @@ func (router *Router) forwardPacketsFromOtherRouters() {
 		} else if packet[0] != '{' {
 			log.Printf("router #%v ignored packet: %v\n", router.index, packet)
 		}
-		router.checkDoneChannel()
-	}
-}
-
-func (router *Router) checkDoneChannel() {
-	select {
-	case <-router.doneChannel:
-		return
-	default:
 	}
 }

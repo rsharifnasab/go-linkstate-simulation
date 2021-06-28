@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"os/exec"
+	"time"
 )
 
 func main() {
@@ -35,6 +36,11 @@ func main() {
 	close(manager.networkReadyChannel)
 	log.Printf("Network is ready")
 	manager.sendTestPackets()
+
+	// wait for routers to transmit packets
+	// if we quit now, they will be terminated by os
+	time.Sleep(5 * time.Second)
+
 	for _, router := range manager.routers {
 		router.conn.Close()
 	}
