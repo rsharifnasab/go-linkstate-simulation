@@ -51,7 +51,7 @@ func (router *Router) calculateSPT() {
 			prev[edge.Dest] = pqItem.index
 		}
 	}
-	log.Printf("Calculated shortest Path Tree:\n\t%+v", router.forwardingTable)
+	log.Printf("Calculated forwarding table:\n\t%+v", router.forwardingTable)
 
 }
 
