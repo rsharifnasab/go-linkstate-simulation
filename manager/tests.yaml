@@ -1,19 +1,23 @@
 tests:
 - from: 0
   to: 1
-  data: lorem
+  data: 0to1
 - from: 3
   to: 1
-  data: ipsum
+  data: 3to1
 - from: 2
   to: 0
-  data: dolor
+  data: 2to1to0
 - from: 1
   to: 0
-  data: amet
+  data: 1to0
 - from: 3
   to: 0
-  data: rial
+  data: 3to1to0
 - from: 1
   to: 0
-  data: adipiscingsdlfkjasdflkjasdflkjasdflkjasdflkj
+  data: 1to0
+- from: 2
+  to: 3
+  data: 2to1to3
+
