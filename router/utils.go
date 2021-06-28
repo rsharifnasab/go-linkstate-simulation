@@ -111,12 +111,17 @@ func (router *Router) StartUDPServer() {
 // this function will initialize it from primary table
 func (router *Router) initalCombinedTables() {
 	router.netConns = make([][]*Edge, router.routersCount)
-	for i := 0; i < router.routersCount; i++ {
-		router.netConns[i] = make([]*Edge, 0)
-	}
-
+	router.netConns[router.index] = router.neighbours
 	router.mergedPortMaps = make(map[int]int)
 	for k, v := range router.portMap {
 		router.mergedPortMaps[k] = v
 	}
+}
+
+func createSlice(size int, defaultValue int) []int {
+	slice := make([]int, size)
+	for i := 0; i < size; i++ {
+		slice[i] = defaultValue
+	}
+	return slice
 }

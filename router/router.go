@@ -15,9 +15,11 @@ type Router struct {
 	index   int
 	logFile *os.File
 
-	routersCount int
-	neighbours   []*Edge
-	netConns     [][]*Edge
+	routersCount     int
+	neighbours       []*Edge
+	netConns         [][]*Edge
+	forwardingTable  map[int]int
+	shortestPathTree []*Edge
 
 	portMap        map[int]int
 	mergedPortMaps map[int]int

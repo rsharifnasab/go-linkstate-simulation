@@ -23,8 +23,9 @@ func main() {
 	router.testNeighbouringLinks()
 	router.waitNetworkReadiness()
 
-	go router.recieveLSPs()
-	router.sendLSPs()
+	go router.broadcastSelfLSP()
+	router.recieveLSPs()
 
+	router.calculateSPT()
 	time.Sleep(10 * time.Second)
 }
