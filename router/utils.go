@@ -147,14 +147,10 @@ func createSlice(size int, defaultValue int) []int {
 	return slice
 }
 
-func parsePacket(rawPacket string) (*Packet, bool) {
+func parsePacket(rawPacket string) *Packet {
 	rawPacket = strings.TrimSpace(rawPacket)
 	packet := &Packet{}
 	_, err := fmt.Sscanf(rawPacket, "%d %d %s", &packet.source, &packet.destination, &packet.data)
-	if err != nil {
-		// log.Printf("received weird string: %v. ignoring it", rawPacket)
-		// panic(err)
-		return nil, false
-	}
-	return packet, true
+	pnc(err)
+	return packet
 }

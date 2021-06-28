@@ -37,7 +37,7 @@ func main() {
 	go router.forwardPacketsFromManager()
 	go router.forwardPacketsFromOtherRouters()
 
-	<-router.doneChannel
+	<-router.managerPacketsDone
 	log.Printf("test packets from manager done")
 
 	time.Sleep(3 * time.Second)
