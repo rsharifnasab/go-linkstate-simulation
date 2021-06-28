@@ -36,6 +36,7 @@ func (router *Router) InitLogger() {
 	log.SetFlags(0)
 	log.Printf("")
 	log.SetPrefix(fmt.Sprintf("router #%v: ", router.index))
+
 	log.Printf("connected to manager, udp port: %v", router.port)
 
 }
@@ -62,10 +63,7 @@ func dialUDP(addr string) net.Conn {
 func (router *Router) readUDPAsBytes() []byte {
 	buff := make([]byte, 1024*1024)
 	n, _, err := router.conn.ReadFromUDP(buff)
-	// log.Printf("Trying to read")
-	// buff, err := router.connReader.ReadBytes('\n')
 	pnc(err)
-	// log.Printf("I read %v\n", string(buff))
 	return buff[:n]
 }
 
@@ -77,27 +75,8 @@ func (router *Router) writeUDPAsBytes(index int, data []byte) {
 	conn := dialUDP(fmt.Sprintf("localhost:%v", port))
 	defer conn.Close()
 
-	// toSendData := make([]byte, 0)
-	// toSendData = append(toSendData, data...)
-	// toSendData = append(toSendData, '\n')
-	// _, err := conn.Write(toSendData)
-	// writer := bufio.NewWriter(conn)
-	// _, err := writer.Write(data)
 	_, err := conn.Write(data)
 	pnc(err)
-	// writer.Flush()
-
-	// conn2 := dialUDP("localhost:%6868")
-	// defer conn2.Close()
-
-	// toSendData := make([]byte, 0)
-	// //toSendData = append(toSendData, data...)
-	// //toSendData = append(toSendData, '\n')
-	// //_, err := conn.Write(toSendData)
-
-	// _, err = conn2.Write(data)
-	// pnc(err)
-
 }
 
 // open a UDP server on desired port and start listening
@@ -131,8 +110,10 @@ func (router *Router) StartUDPServer() {
 func (router *Router) initalCombinedTables() {
 	router.netConns = make([][]*Edge, router.routersCount)
 	router.netConns[router.index] = router.neighbours
+
 	router.mergedPortMapLock.Lock()
 	defer router.mergedPortMapLock.Unlock()
+
 	router.mergedPortMaps = make(map[int]int)
 	for k, v := range router.portMap {
 		router.mergedPortMaps[k] = v
@@ -150,7 +131,8 @@ func createSlice(size int, defaultValue int) []int {
 func parsePacket(rawPacket string) *Packet {
 	rawPacket = strings.TrimSpace(rawPacket)
 	packet := &Packet{}
-	_, err := fmt.Sscanf(rawPacket, "%d %d %s", &packet.source, &packet.destination, &packet.data)
+	_, err := fmt.Sscanf(rawPacket, "%d %d %d %s",
+		&packet.From, &packet.To, &packet.CostToNow, &packet.Data)
 	pnc(err)
 	return packet
 }

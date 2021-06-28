@@ -62,9 +62,6 @@ func (router *Router) readConnectivityTable() {
 }
 
 func (router *Router) sendReadySignal() {
-	// for debug
-	//time.Sleep(5 * time.Second)
-
 	router.writeToManager("READY")
 	log.Printf("I am ready")
 }

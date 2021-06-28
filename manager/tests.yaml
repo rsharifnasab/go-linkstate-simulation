@@ -8,9 +8,9 @@ tests:
 - from: 2
   to: 0
   data: 2to1to0
-- from: 1
+- from: 5
   to: 0
-  data: 1to0
+  data: 5to4to2to1to0
 - from: 3
   to: 0
   data: 3to1to0

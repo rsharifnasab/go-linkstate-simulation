@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -41,9 +42,11 @@ type Edge struct {
 }
 
 type Packet struct {
-	source      int
-	destination int
-	data        string
+	From      int
+	To        int
+	CostToNow int
+
+	Data string
 }
 
 func NewRouter() *Router {
@@ -53,19 +56,39 @@ func NewRouter() *Router {
 	}
 }
 
-func (router *Router) sendPacket(rawPacket string) {
-	packet := parsePacket(rawPacket)
-	if packet.destination == router.index {
-		log.Printf("Receive packet from #%v. [%v]", packet.source, packet.data)
-	} else {
-		nextHop, ok := router.forwardingTable[packet.destination]
-		if !ok {
-			log.Printf("problem forwarding packet (%v) from router #%v to %v\n",
-				rawPacket, packet.source, packet.destination)
+func (packet *Packet) serialize() []byte {
+	return []byte(fmt.Sprintf("%d %d %d %s",
+		packet.From, packet.To, packet.CostToNow, packet.Data))
+}
+func (router *Router) writePacketTo(nextHop int, packet *Packet) {
+	router.writeUDPAsBytes(nextHop, packet.serialize())
+}
+
+func (router *Router) addEdgeCostTo(nextHop int, packet *Packet) {
+	for _, v := range router.neighbours {
+		if v.Dest == nextHop {
+			packet.CostToNow += v.Cost
 			return
 		}
-		log.Printf("forwarding [%v] to nextHop router #%v\n", rawPacket, nextHop)
-		router.writeUDPAsBytes(nextHop, []byte(rawPacket))
+	}
+	log.Fatalf("cannot find next hop cost (%v) for packet (%+v)", nextHop, packet)
+}
+func (router *Router) sendPacket(rawPacket string) {
+
+	packet := parsePacket(rawPacket)
+	if packet.To == router.index {
+		log.Printf("Receive packet from #%v with cost %v. [%v]", packet.From, packet.CostToNow, packet.Data)
+	} else {
+		nextHop, ok := router.forwardingTable[packet.To]
+		if !ok {
+			log.Printf("problem forwarding packet (%v) from router #%v to %v\n",
+				rawPacket, packet.From, packet.To)
+		} else {
+
+			log.Printf("forwarding [%v] to nextHop router #%v\n", rawPacket, nextHop)
+			router.addEdgeCostTo(nextHop, packet)
+			router.writePacketTo(nextHop, packet)
+		}
 	}
 }
 
@@ -75,7 +98,6 @@ func (router *Router) forwardPacketsFromManager() {
 		if data == "QUIT" {
 			close(router.managerPacketsDone)
 		} else {
-			//log.Printf("recieved  [%v] from manager\n", data)
 			router.sendPacket(data)
 		}
 	}

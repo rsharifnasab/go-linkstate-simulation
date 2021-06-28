@@ -6,9 +6,10 @@ import (
 )
 
 type Packet struct {
-	From int    `mapstructure:"from"`
-	To   int    `mapstructure:"to"`
-	Data string `mapstructure:"data"`
+	From      int    `mapstructure:"from"`
+	To        int    `mapstructure:"to"`
+	Data      string `mapstructure:"data"`
+	CostToNow int
 }
 
 func (manager *Manager) sendTestPackets() {
@@ -27,5 +28,5 @@ func (manager *Manager) sendTestPackets() {
 }
 
 func serializePacket(packet *Packet) string {
-	return fmt.Sprintf("%d %d %s", packet.From, packet.To, packet.Data)
+	return fmt.Sprintf("%d %d %d %s", packet.From, packet.To, packet.CostToNow, packet.Data)
 }
