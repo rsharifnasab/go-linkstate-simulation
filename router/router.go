@@ -64,10 +64,11 @@ func (router *Router) writePacketTo(nextHop int, packet *Packet) {
 	router.writeUDPAsBytes(nextHop, packet.serialize())
 }
 
-func (router *Router) addEdgeCostTo(nextHop int, packet *Packet) {
+func (router *Router) updatePacket(nextHop int, packet *Packet) {
 	for _, v := range router.neighbours {
 		if v.Dest == nextHop {
 			packet.CostToNow += v.Cost
+			packet.Data = fmt.Sprintf("%s:%d", packet.Data, nextHop)
 			return
 		}
 	}
@@ -86,7 +87,7 @@ func (router *Router) sendPacket(rawPacket string) {
 		} else {
 
 			log.Printf("forwarding [%v] to nextHop router #%v\n", rawPacket, nextHop)
-			router.addEdgeCostTo(nextHop, packet)
+			router.updatePacket(nextHop, packet)
 			router.writePacketTo(nextHop, packet)
 		}
 	}
