@@ -81,9 +81,9 @@ func (router *Router) writeUDPAsBytes(index int, data []byte) {
 
 // open a UDP server on desired port and start listening
 func (router *Router) StartUDPServer() {
-	const MAX_TRIES = 3
+	const MaxTries = 3
 	var err error
-	for failures := 0; failures < MAX_TRIES; failures++ {
+	for failures := 0; failures < MaxTries; failures++ {
 		port := getSomeFreePort()
 		// log.Printf("getSomeFreePort() provided port number %v\n", port)
 		if port == 0 {
