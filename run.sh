@@ -4,6 +4,7 @@ set -o errexit
 set -o nounset
 
 find . -type f -name "*.log" -delete
+find . -type f -name "*.spt" -delete
 
 clear 
 (

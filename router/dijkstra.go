@@ -2,7 +2,6 @@ package main
 
 import (
 	"container/heap"
-	"encoding/json"
 	"log"
 	"math"
 )
@@ -28,7 +27,6 @@ func (router *Router) calculateSPT() {
 			break
 		}
 		mark[pqItem.index] = true
-		log.Printf("debug%v: popped item is router #%v\n", router.index, pqItem.index)
 		for _, edge := range router.netConns[pqItem.index] {
 			if mark[edge.Dest] {
 				continue
@@ -53,14 +51,8 @@ func (router *Router) calculateSPT() {
 			prev[edge.Dest] = pqItem.index
 		}
 	}
-	// router.shortestPathTree = make([]*Edge, router.routersCount)
-	router.logxxx()
-}
+	log.Printf("shortestPathTree %v: %+v", router.index, router.forwardingTable)
 
-func (router *Router) logxxx() {
-	marshalled, err := json.MarshalIndent(router.forwardingTable, "ft ", "\t")
-	pnc(err)
-	log.Printf("router #%v the forwarding table is: ft%v", router.index, string(marshalled))
 }
 
 func (router *Router) initPQ(pq *PriorityQueue) {
