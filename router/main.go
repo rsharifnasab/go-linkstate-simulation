@@ -1,9 +1,16 @@
 package main
 
-import "time"
+import (
+	"log"
+	"sync"
+	"time"
+)
 
 func main() {
-	router := &Router{}
+	router := &Router{
+		doneChannel: make(chan struct{}),
+		mpmLock:     sync.RWMutex{},
+	}
 	defer router.freeResources()
 
 	router.StartUDPServer()
@@ -23,12 +30,16 @@ func main() {
 	router.testNeighbouringLinks()
 	router.waitNetworkReadiness()
 
+	router.initalCombinedTables()
 	go router.broadcastSelfLSP()
 	router.recieveLSPs()
 
 	router.calculateSPT()
 
-	go router.sendPacketsGotFromManager()
-
-	time.Sleep(10 * time.Second)
+	go router.forwardPacketsFromManager()
+	go router.forwardPacketsFromOtherRouters()
+	// <-router.doneChannel
+	time.Sleep(2 * time.Second)
+	log.Printf("router #%v done\n", router.index)
+	time.Sleep(time.Second)
 }

@@ -4,17 +4,19 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"strconv"
 	"strings"
 )
 
 type Router struct {
-	conn   net.Conn
-	reader *bufio.Reader
-	writer *bufio.Writer
-	Index  int
-	Port   int
+	conn          net.Conn
+	reader        *bufio.Reader
+	writer        *bufio.Writer
+	packetChannel chan string
+	Index         int
+	Port          int
 }
 
 func (router *Router) writeAsString(obj interface{}) {
@@ -50,4 +52,15 @@ func (router *Router) setConnection(conn net.Conn) {
 	router.conn = conn
 	router.reader = bufio.NewReader(conn)
 	router.writer = bufio.NewWriter(conn)
+}
+
+func (router *Router) handlePackets() {
+	for {
+		packet := <-router.packetChannel
+		log.Printf("packet for #%v: %v\n", router.Index, packet)
+		router.writeAsString(packet)
+		if packet == "QUIT" {
+			break
+		}
+	}
 }

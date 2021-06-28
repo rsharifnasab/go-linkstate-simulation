@@ -2,9 +2,10 @@ package main
 
 import (
 	"bufio"
+	"log"
 	"net"
 	"os"
-	"time"
+	"sync"
 )
 
 type Router struct {
@@ -24,10 +25,14 @@ type Router struct {
 
 	portMap        map[int]int
 	mergedPortMaps map[int]int
+	mpmLock        sync.RWMutex
 
 	managerConnection *net.TCPConn
 	managerWriter     *bufio.Writer
 	managerReader     *bufio.Reader
+
+	forwardingChannel chan string
+	doneChannel       chan struct{}
 }
 
 type Edge struct {
@@ -35,19 +40,62 @@ type Edge struct {
 	Cost int
 }
 
-func (router *Router) sendPacket(packet string) {
-
+type Packet struct {
+	source      int
+	destination int
+	data        string
 }
 
-func (router *Router) sendPacketsGotFromManager() {
+func (router *Router) sendPacket(rawPacket string) {
+	packet, ok := parsePacket(rawPacket)
+	if !ok {
+		log.Printf("malformed packet %v at router #%v\n", rawPacket, router.index)
+		return
+	}
+	if packet.destination == router.index {
+		log.Printf("I got the packet originating from router #%v. It says %v. Now what????\n", packet.source, packet.data)
+		return
+	}
+	nextHop, ok := router.forwardingTable[packet.destination]
+	if !ok {
+		log.Printf("problem forwarding packet (%v) from router #%v to %v\n", rawPacket, router.index, packet.destination)
+		return
+	}
+	log.Printf("router #%v sending %+v to router #%v\n", router.index, packet, nextHop)
+	router.writeUDPAsBytes(nextHop, []byte(rawPacket))
+}
+
+func (router *Router) forwardPacketsFromManager() {
 	for {
 		data := router.readStringFromManager()
 		if data == "QUIT" {
-			time.Sleep(1 * time.Second)
-			os.Exit(0)
+			close(router.doneChannel)
+			return
 		}
-
+		log.Printf("router #%v received packet %v from manager\n", router.index, data)
 		router.sendPacket(data)
+	}
+}
 
+func (router *Router) forwardPacketsFromOtherRouters() {
+	for {
+		packet := string(router.readUDPAsBytes())
+		_, shouldForward := parsePacket(packet)
+		if shouldForward {
+			log.Printf("router #%v received packet: %v\n", router.index, packet)
+			router.sendPacket(packet)
+			// router.sendPacket(packet)
+		} else if packet[0] != '{' {
+			log.Printf("router #%v ignored packet: %v\n", router.index, packet)
+		}
+		router.checkDoneChannel()
+	}
+}
+
+func (router *Router) checkDoneChannel() {
+	select {
+	case <-router.doneChannel:
+		return
+	default:
 	}
 }

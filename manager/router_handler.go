@@ -30,7 +30,7 @@ func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 	<-manager.networkReadyChannel             // all routers got portmap
 
 	router.writeAsString("NETWORK_READY")
-
+	router.handlePackets()
 }
 
 func (manager *Manager) getReadySignalFromRouter(router *Router) {

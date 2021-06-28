@@ -4,11 +4,11 @@ import (
 	"log"
 	"net"
 	"os/exec"
-	"time"
 )
 
 func main() {
 	initLogger()
+	// go sniff()
 	manager := newManagerWithConfig("config")
 	listener, err := net.Listen("tcp", ":8585")
 	pnc(err)
@@ -34,9 +34,24 @@ func main() {
 	manager.networkReadyWG.Wait()
 	close(manager.networkReadyChannel)
 	log.Printf("Network is ready")
-
-	time.Sleep(3 * time.Second)
+	manager.sendTestPackets()
 	for _, router := range manager.routers {
 		router.conn.Close()
 	}
 }
+
+// func StartUDPServer() {
+// 	const MAX_TRIES = 3
+// 	var err error
+// 	port := "6868"
+// 	// log.Printf("getSomeFreePort() provided port number %v\n", port)
+// 	addr := fmt.Sprintf(":%d", port)
+// 	conn, err := net.ListenPacket("udp", addr)
+// 	if err == nil {
+// 		conn = conn.(*net.UDPConn)
+// 		connReader = bufio.NewReader(router.conn)
+// 		connWriter = bufio.NewWriter(router.conn)
+// 		port = port
+// 	}
+// 	// router.connWriter.Write([]byte("salam"))
+// }

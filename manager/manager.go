@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"sync"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -27,15 +30,21 @@ type ConfigEdge struct {
 	Cost  int `mapstructure:"cost"`
 }
 
-func loadConfig(configFile string) *viper.Viper {
+type Packet struct {
+	From int    `mapstructure:"from"`
+	To   int    `mapstructure:"to"`
+	Data string `mapstructure:"data"`
+}
+
+func loadYaml(fileName string) *viper.Viper {
 	config := viper.New()
-	config.SetConfigName(configFile)
+	config.SetConfigName(fileName)
 	config.AddConfigPath(".")
 	pnc(config.ReadInConfig())
 	return config
 }
 func newManagerWithConfig(configFile string) *Manager {
-	config := loadConfig(configFile)
+	config := loadYaml(configFile)
 	routersCount := config.GetInt("number_of_routers")
 	manager := &Manager{
 		routersCount:        routersCount,
@@ -48,7 +57,7 @@ func newManagerWithConfig(configFile string) *Manager {
 	}
 	for i := 0; i < manager.routersCount; i++ {
 		manager.netConns[i] = make([]*Edge, 0)
-		manager.routers[i] = &Router{Index: i}
+		manager.routers[i] = &Router{Index: i, packetChannel: make(chan string)}
 	}
 
 	var configEdges []ConfigEdge
@@ -61,4 +70,23 @@ func newManagerWithConfig(configFile string) *Manager {
 			append(manager.netConns[configEdge.Node2], &Edge{Dest: configEdge.Node1, Cost: configEdge.Cost})
 	}
 	return manager
+}
+
+func (manager *Manager) sendTestPackets() {
+	tests := loadYaml("tests")
+	packets := make([]Packet, 0)
+	pnc(tests.UnmarshalKey("tests", &packets))
+	for _, packet := range packets {
+		manager.routers[packet.From].packetChannel <- serializePacket(&packet)
+		log.Printf("transmitting packet %+v\n", packet)
+		time.Sleep(100 * time.Millisecond)
+	}
+	time.Sleep(100 * time.Millisecond)
+	for i := range manager.routers {
+		manager.routers[i].packetChannel <- "QUIT"
+	}
+}
+
+func serializePacket(packet *Packet) string {
+	return fmt.Sprintf("%d %d %s", packet.From, packet.To, packet.Data)
 }

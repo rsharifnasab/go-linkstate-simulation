@@ -1,0 +1,19 @@
+tests:
+- from: 0
+  to: 1
+  data: lorem
+- from: 3
+  to: 1
+  data: ipsum
+- from: 2
+  to: 0
+  data: dolor
+- from: 1
+  to: 0
+  data: amet
+- from: 3
+  to: 0
+  data: rial
+- from: 1
+  to: 0
+  data: adipiscingsdlfkjasdflkjasdflkjasdflkjasdflkj

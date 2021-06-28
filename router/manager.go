@@ -3,7 +3,9 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"strconv"
@@ -25,6 +27,9 @@ func (router *Router) writeToManager(data interface{}) {
 
 func (router *Router) readStringFromManager() string {
 	str, err := router.managerReader.ReadString('\n')
+	if errors.Is(err, io.EOF) {
+		return "QUIT"
+	}
 	pnc(err)
 	return strings.TrimSpace(str)
 }
