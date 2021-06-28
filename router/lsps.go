@@ -16,6 +16,7 @@ type LSP struct {
 func (router *Router) addToMergedPortMap(portMap map[int]int) {
 	router.mergedPortMapLock.Lock()
 	defer router.mergedPortMapLock.Unlock()
+
 	for k, v := range portMap {
 		oldVal, isIn := router.mergedPortMaps[k]
 		if isIn {
@@ -50,14 +51,18 @@ func (router *Router) recieveLSPs() {
 
 	log.Printf("(lsp server) listening to other routers LSPs started")
 	remainingTables := router.routersCount - 1
+
 	isTableReceived := make([]bool, router.routersCount)
 	isTableReceived[router.index] = true
+
 	for remainingTables > 0 {
 		lsp := router.receiveSingleLSP()
 		if !isTableReceived[lsp.SenderIndex] {
-			remainingTables--
 			log.Printf("(lsp server) recieved #%v LSP", lsp.SenderIndex)
+
+			remainingTables--
 			isTableReceived[lsp.SenderIndex] = true
+
 			router.addToMergedPortMap(lsp.PortMap)
 			router.addToNetConns(lsp.SenderIndex, lsp.Neighbours)
 			router.broadcastLSP(lsp)
@@ -79,7 +84,7 @@ func (router *Router) broadcastLSP(lsp *LSP) {
 	for _, edge := range router.neighbours {
 		router.sendLSPTo(edge.Dest, lsp)
 	}
-	//log.Printf("(lsp client)  LSPs done")
+	//log.Printf("(lsp client) broadcast LSPs done")
 }
 
 func (router *Router) broadcastSelfLSP() {

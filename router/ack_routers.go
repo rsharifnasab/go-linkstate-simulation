@@ -12,12 +12,11 @@ func (router *Router) testNeighbouringLinks() {
 	for _, edge := range router.neighbours {
 		index := edge.Dest
 		port := router.portMap[index]
-		//log.Printf("dialing to router[%v] on port %v\n", index, port)
 		conn := dialUDP(fmt.Sprintf("localhost:%v", port))
+		defer conn.Close()
+
 		router.sendAckRequest(conn, index)
 		router.getAckResponse(conn, index)
-		conn.Close()
-		//log.Printf("%v check", edge.Dest)
 	}
 	router.writeToManager("ACKS_RECEIVED")
 	log.Printf("(ack client) checking neighbouring links done")
@@ -49,7 +48,6 @@ func (router *Router) sendAcknowledgements() {
 		ackRequest := make([]byte, 100)
 		n, addr, err := router.conn.ReadFrom(ackRequest[:])
 		pnc(err)
-		//log.Printf("(udp server ack) ack req from  router[%v]", string(ackRequest[:n-1]))
 		router.conn.WriteTo([]byte("ack\n"), addr)
 		log.Printf("(ack server) acknowledged router #%v", string(ackRequest[:n-1]))
 	}
