@@ -18,7 +18,7 @@ func main() {
 	log.Printf("Manager: Waiting for routers to get ready")
 	manager.readyWG.Wait()
 	close(manager.readyChannel)
-	log.Printf("All routers ready. routers checking direct links")
+	log.Printf("Manager: All routers ready. routers checking direct links")
 
 	manager.networkReadyWG.Wait()
 	close(manager.networkReadyChannel)
