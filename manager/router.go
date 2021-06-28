@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -27,10 +26,8 @@ func (router *Router) writeAsString(obj interface{}) {
 func (router *Router) writeAsBytes(obj interface{}) {
 	marshalled, err := json.Marshal(obj)
 	pnc(err)
-	buf := make([]byte, 0)
-	buf = append(buf, marshalled...)
-	buf = append(buf, '\n')
-	_, err = router.writer.Write(buf)
+	marshalled = append(marshalled, '\n')
+	_, err = router.writer.Write(marshalled)
 	pnc(err)
 	router.writer.Flush()
 }
@@ -52,15 +49,4 @@ func (router *Router) setConnection(conn net.Conn) {
 	router.conn = conn
 	router.reader = bufio.NewReader(conn)
 	router.writer = bufio.NewWriter(conn)
-}
-
-func (router *Router) sendDataPackets() {
-	for {
-		packet := <-router.packetChannel
-		log.Printf("router #%v: got packet [%v]\n", router.Index, packet)
-		router.writeAsString(packet)
-		if packet == "QUIT" {
-			break
-		}
-	}
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os/exec"
 )
 
 // handle our connection to the router in a new go routine
@@ -32,6 +33,20 @@ func (manager *Manager) handleRouter(routerIndex int, conn net.Conn) {
 	router.writeAsString("NETWORK_READY")
 
 	router.sendDataPackets()
+}
+
+func (router *Router) sendDataPackets() {
+	for {
+		// read from packet queue
+		packet := <-router.packetChannel
+		log.Printf("router #%v: got packet [%v]\n", router.Index, packet)
+		router.writeAsString(packet)
+
+		if packet == "QUIT" {
+			// our last packet
+			break
+		}
+	}
 }
 
 func (manager *Manager) getReadySignalFromRouter(router *Router) {
@@ -65,6 +80,21 @@ func handleChildError(reader io.ReadCloser, i int) {
 		if !sc.Scan() {
 			return
 		}
-		log.Printf("child %d : %s\n", i, sc.Text())
+		log.Printf("router #%v (STDERR) : %s\n", i, sc.Text())
 	}
+}
+
+func (manager *Manager) launchRouter(i int) {
+	routerCmd := exec.Command("../router/router")
+	reader, err := routerCmd.StderrPipe()
+	pnc(err)
+
+	go handleChildError(reader, i)
+	routerCmd.Start()
+
+	log.Printf("router #%v: created\n", i)
+	conn, err := manager.listener.Accept()
+	pnc(err)
+	manager.routers[i].setConnection(conn)
+	go manager.handleRouter(i, conn)
 }

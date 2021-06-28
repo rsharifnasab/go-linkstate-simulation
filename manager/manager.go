@@ -1,21 +1,23 @@
 package main
 
 import (
-	"fmt"
+	"net"
 	"sync"
-	"time"
-
-	"github.com/spf13/viper"
 )
 
 type Manager struct {
-	routersCount        int
-	routers             []*Router
-	netConns            [][]*Edge
-	readyWG             sync.WaitGroup
-	networkReadyWG      sync.WaitGroup
+	routersCount int
+	routers      []*Router
+
+	netConns [][]*Edge
+
+	readyWG        sync.WaitGroup
+	networkReadyWG sync.WaitGroup
+
 	readyChannel        chan struct{}
 	networkReadyChannel chan struct{}
+
+	listener net.Listener
 }
 
 type Edge struct {
@@ -29,31 +31,23 @@ type ConfigEdge struct {
 	Cost  int `mapstructure:"cost"`
 }
 
-type Packet struct {
-	From int    `mapstructure:"from"`
-	To   int    `mapstructure:"to"`
-	Data string `mapstructure:"data"`
-}
-
-func loadYaml(fileName string) *viper.Viper {
-	config := viper.New()
-	config.SetConfigName(fileName)
-	config.AddConfigPath(".")
-	pnc(config.ReadInConfig())
-	return config
-}
 func newManagerWithConfig(configFile string) *Manager {
 	config := loadYaml(configFile)
 	routersCount := config.GetInt("number_of_routers")
+
 	manager := &Manager{
-		routersCount:        routersCount,
-		netConns:            make([][]*Edge, routersCount),
-		readyWG:             sync.WaitGroup{},
-		networkReadyWG:      sync.WaitGroup{},
+		routersCount: routersCount,
+		netConns:     make([][]*Edge, routersCount),
+
+		readyWG:        sync.WaitGroup{},
+		networkReadyWG: sync.WaitGroup{},
+
 		readyChannel:        make(chan struct{}),
 		networkReadyChannel: make(chan struct{}),
-		routers:             make([]*Router, routersCount),
+
+		routers: make([]*Router, routersCount),
 	}
+
 	for i := 0; i < manager.routersCount; i++ {
 		manager.netConns[i] = make([]*Edge, 0)
 		manager.routers[i] = &Router{Index: i, packetChannel: make(chan string)}
@@ -68,23 +62,21 @@ func newManagerWithConfig(configFile string) *Manager {
 		manager.netConns[configEdge.Node2] =
 			append(manager.netConns[configEdge.Node2], &Edge{Dest: configEdge.Node1, Cost: configEdge.Cost})
 	}
+
+	// start tcp connection
+	listener, err := net.Listen("tcp", ":8585")
+	pnc(err)
+	manager.listener = listener
+
+	// initalize waitgroups
+	manager.readyWG.Add(manager.routersCount)
+	manager.networkReadyWG.Add(manager.routersCount)
+
 	return manager
 }
-
-func (manager *Manager) sendTestPackets() {
-	tests := loadYaml("tests")
-	packets := make([]Packet, 0)
-	pnc(tests.UnmarshalKey("tests", &packets))
-	for _, packet := range packets {
-		manager.routers[packet.From].packetChannel <- serializePacket(&packet)
-		time.Sleep(500 * time.Millisecond)
+func (manager *Manager) freeResources() {
+	for _, router := range manager.routers {
+		router.conn.Close()
 	}
-	time.Sleep(100 * time.Millisecond)
-	for i := range manager.routers {
-		manager.routers[i].packetChannel <- "QUIT"
-	}
-}
-
-func serializePacket(packet *Packet) string {
-	return fmt.Sprintf("%d %d %s", packet.From, packet.To, packet.Data)
+	manager.listener.Close()
 }
