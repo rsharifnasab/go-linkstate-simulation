@@ -1,4 +1,4 @@
-number_of_routers: 4
+number_of_routers: 6
 links:
   - node1: 0
     node2: 1
@@ -15,3 +15,10 @@ links:
   - node1: 2
     node2: 3
     cost: 15
+  - node1: 2
+    node2: 4
+    cost: 30
+  - node1: 5
+    node2: 4
+    cost: 17
+

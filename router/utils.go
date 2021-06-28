@@ -71,8 +71,8 @@ func (router *Router) readUDPAsBytes() []byte {
 
 // open an udp socket and send byte slice to specified router
 func (router *Router) writeUDPAsBytes(index int, data []byte) {
-	router.mpmLock.RLock()
-	defer router.mpmLock.RUnlock()
+	router.mergedPortMapLock.RLock()
+	defer router.mergedPortMapLock.RUnlock()
 	port := router.mergedPortMaps[index]
 	conn := dialUDP(fmt.Sprintf("localhost:%v", port))
 	defer conn.Close()
@@ -131,8 +131,8 @@ func (router *Router) StartUDPServer() {
 func (router *Router) initalCombinedTables() {
 	router.netConns = make([][]*Edge, router.routersCount)
 	router.netConns[router.index] = router.neighbours
-	router.mpmLock.Lock()
-	defer router.mpmLock.Unlock()
+	router.mergedPortMapLock.Lock()
+	defer router.mergedPortMapLock.Unlock()
 	router.mergedPortMaps = make(map[int]int)
 	for k, v := range router.portMap {
 		router.mergedPortMaps[k] = v

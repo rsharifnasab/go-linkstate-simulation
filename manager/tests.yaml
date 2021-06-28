@@ -20,4 +20,7 @@ tests:
 - from: 2
   to: 3
   data: 2to1to3
+- from: 1
+  to: 5
+  data: 1to2to4to5
 

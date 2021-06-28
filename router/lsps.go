@@ -14,8 +14,8 @@ type LSP struct {
 }
 
 func (router *Router) addToMergedPortMap(portMap map[int]int) {
-	router.mpmLock.Lock()
-	defer router.mpmLock.Unlock()
+	router.mergedPortMapLock.Lock()
+	defer router.mergedPortMapLock.Unlock()
 	for k, v := range portMap {
 		oldVal, isIn := router.mergedPortMaps[k]
 		if isIn {

@@ -23,9 +23,9 @@ type Router struct {
 	forwardingTable  map[int]int
 	shortestPathTree []*Edge
 
-	portMap        map[int]int
-	mergedPortMaps map[int]int
-	mpmLock        sync.RWMutex
+	portMap           map[int]int
+	mergedPortMaps    map[int]int
+	mergedPortMapLock sync.RWMutex
 
 	managerConnection *net.TCPConn
 	managerWriter     *bufio.Writer
@@ -49,7 +49,7 @@ type Packet struct {
 func NewRouter() *Router {
 	return &Router{
 		managerPacketsDone: make(chan struct{}),
-		mpmLock:            sync.RWMutex{},
+		mergedPortMapLock:  sync.RWMutex{},
 	}
 }
 
