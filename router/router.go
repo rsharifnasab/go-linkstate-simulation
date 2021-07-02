@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"net"
 	"os"
-	"sync"
 )
 
 type Router struct {
@@ -22,9 +21,7 @@ type Router struct {
 	forwardingTable  map[int]int
 	shortestPathTree []*Edge
 
-	portMap           map[int]int
-	mergedPortMaps    map[int]int
-	mergedPortMapLock sync.RWMutex
+	portMap map[int]int
 
 	managerConnection *net.TCPConn
 	managerWriter     *bufio.Writer
@@ -42,7 +39,6 @@ type Edge struct {
 func NewRouter() *Router {
 	return &Router{
 		managerPacketsDone: make(chan struct{}),
-		mergedPortMapLock:  sync.RWMutex{},
 	}
 }
 

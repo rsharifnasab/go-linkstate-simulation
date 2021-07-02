@@ -13,23 +13,6 @@ type LSP struct {
 	Neighbours []*Edge
 }
 
-func (router *Router) addToMergedPortMap(portMap map[int]int) {
-	router.mergedPortMapLock.Lock()
-	defer router.mergedPortMapLock.Unlock()
-
-	for k, v := range portMap {
-		oldVal, isIn := router.mergedPortMaps[k]
-		if isIn {
-			if oldVal != v {
-				log.Fatalf("portmap for[%v] has old val = %v, but i got net val %v", k, oldVal, v)
-			}
-		}
-		if v != -1 {
-			router.mergedPortMaps[k] = v
-		}
-	}
-}
-
 func (router *Router) addToNetConns(index int, neighbours []*Edge) {
 	// log.Printf("router[%v] has neighbours : ", index)
 	// for _, v := range neighbours {
@@ -63,7 +46,6 @@ func (router *Router) recieveLSPs() {
 			remainingTables--
 			isTableReceived[lsp.SenderIndex] = true
 
-			router.addToMergedPortMap(lsp.PortMap)
 			router.addToNetConns(lsp.SenderIndex, lsp.Neighbours)
 			router.broadcastLSP(lsp)
 		}
